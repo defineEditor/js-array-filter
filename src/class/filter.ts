@@ -15,11 +15,18 @@ import validateFilterString from "../utils/validateFilterString";
 class Filter {
     private parsedFilter: ParsedFilter;
     private parsedColumns: ColumnMetadataParsed[];
-    private dataTypeFormat: "json" | "xpt" | "parsed";
+    private dataTypeFormat: "dataset-json1.1" | "xpt" | "parsed";
+    private caseInsensitiveColNames: boolean;
 
-    constructor(dataTypeFormat: ColumnFormat, columns: ColumnMetadata[], filter: BasicFilter | string) {
+    constructor(
+        dataTypeFormat: ColumnFormat,
+        columns: ColumnMetadata[],
+        filter: BasicFilter | string,
+        options: { caseInsensitiveColNames: boolean } = { caseInsensitiveColNames: true }
+    ) {
+        this.caseInsensitiveColNames = options.caseInsensitiveColNames;
         // Column Format
-        if (["json", "xpt", "parsed"].indexOf(dataTypeFormat) === -1) {
+        if (["dataset-json1.1", "xpt", "parsed"].indexOf(dataTypeFormat) === -1) {
             throw new Error(`Unknown column format ${dataTypeFormat}, supported formats are: json, xpt, parsed`);
         } else {
             this.dataTypeFormat = dataTypeFormat;
@@ -30,7 +37,7 @@ class Filter {
 
         // Parse filter
         if (typeof filter === "string") {
-            const basicFilter = stringToFilter(filter, this.parsedColumns);
+            const basicFilter = stringToFilter(filter, this.parsedColumns, this.caseInsensitiveColNames);
             this.parsedFilter = this.parse(basicFilter, this.parsedColumns);
         } else {
             this.parsedFilter = this.parse(filter, this.parsedColumns);
@@ -44,7 +51,12 @@ class Filter {
      * @return Parsed filter object with variable indeces added.
      */
 
-    public update = (filter: BasicFilter | string, columns?: Array<ColumnMetadata>): void => {
+    public update = (
+        filter: BasicFilter | string,
+        columns?: Array<ColumnMetadata>,
+        options: { caseInsensitiveColNames: boolean } = { caseInsensitiveColNames: true }
+    ): void => {
+        this.caseInsensitiveColNames = options.caseInsensitiveColNames;
         let parsedColumns: ColumnMetadataParsed[];
         if (columns !== undefined) {
             this.parsedColumns = this.parseColumns(this.dataTypeFormat, columns);
@@ -65,11 +77,14 @@ class Filter {
      * @param columns - Column metadata.
      * @return Parsed columns object with standard data types.
      */
-    public parseColumns = (dataTypeFormat: ColumnFormat, columns: ColumnMetadata[]): ColumnMetadataParsed[] => {
+    public parseColumns = (
+        dataTypeFormat: ColumnFormat,
+        columns: ColumnMetadata[]
+    ): ColumnMetadataParsed[] => {
         let result: ColumnMetadataParsed[] = [];
         if (dataTypeFormat === "parsed") {
             result = columns as ColumnMetadataParsed[];
-        } else if (dataTypeFormat === "json") {
+        } else if (dataTypeFormat === "dataset-json1.1") {
             columns.forEach((column) => {
                 if (["string", "date", "decimal", "datetime", "time", "URI"].includes(column.dataType)) {
                     result.push({ name: column.name, dataType: "string" });
@@ -105,7 +120,15 @@ class Filter {
     private parse = (filter: BasicFilter, columns: ColumnMetadataParsed[]): ParsedFilter => {
         const variableIndeces: number[] = [];
         filter.conditions.forEach((condition) => {
-            const index = columns.findIndex((column) => column.name.toLowerCase() === condition.variable.toLowerCase());
+            const index = columns.findIndex((column) => {
+                if (this.caseInsensitiveColNames) {
+                    return column.name.toLowerCase() === condition.variable.toLowerCase();
+                } else {
+                    return column.name === condition.variable;
+
+                }
+            }
+            );
             if (index !== -1) {
                 variableIndeces.push(index);
             } else {
@@ -114,7 +137,7 @@ class Filter {
         });
 
         // Check the number of connectors corresponds to the number of variables;
-        if (filter.conditions.length - 1 !== filter.connectors.length) {
+        if (filter.conditions.length > 0 && filter.conditions.length - 1 !== filter.connectors.length) {
             throw new Error("Number of logical connectors must be equal to the number of conditions minus one");
         }
 
@@ -258,7 +281,7 @@ class Filter {
      */
     public validateFilterString = (filterString: string): boolean => {
         try {
-            return validateFilterString(filterString, this.parsedColumns);
+            return validateFilterString(filterString, this.parsedColumns, this.caseInsensitiveColNames);
         } catch (error) {
             return false;
         }
@@ -274,8 +297,8 @@ class Filter {
             conditions: this.parsedFilter.conditions,
             connectors: this.parsedFilter.connectors,
             options: this.parsedFilter.options,
-        }
-    }
+        };
+    };
 
     /**
      * Convert filter object to string
@@ -283,8 +306,7 @@ class Filter {
      */
     public toString = (): string => {
         return filterToString(this.parsedFilter);
-    }
-
+    };
 }
 
 export default Filter;

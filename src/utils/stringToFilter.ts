@@ -7,6 +7,7 @@ import { FilterCondition, BasicFilter, Connector, ColumnMetadataParsed, ItemType
 const stringToFilter = (
     filterStringRaw: string,
     columns: ColumnMetadataParsed[],
+    caseInsensitiveColNames: boolean = true,
 ): BasicFilter => {
     const colTypes: { [name: string] : ItemTypeParsed } = columns.reduce( (acc, column) => {
         acc[column.name] = column.dataType;
@@ -70,12 +71,22 @@ const stringToFilter = (
             conditionElements = conditionElements.filter(
                 (element) => element !== undefined,
             );
-            const columnName = conditionElements[0];
+            let columnName = conditionElements[0];
             const comparator = conditionElements[1].toLowerCase();
             const rawValue = conditionElements[2];
             let value: FilterCondition['value'] = rawValue;
 
             let operator: FilterCondition['operator'] = 'eq';
+
+            // If filter is case insensitive to column names, use name from the column definitions
+            if (caseInsensitiveColNames) {
+                const col = columns.find(
+                    (column) => column.name.toLowerCase() === columnName.toLowerCase(),
+                );
+                if (col) {
+                    columnName = col.name;
+                }
+            }
 
             if (
                 Object.prototype.hasOwnProperty.call(
@@ -92,7 +103,7 @@ const stringToFilter = (
                 isMultipleValue = true;
             }
 
-            const colType = colTypes[columnName.toLowerCase()];
+            const colType = colTypes[columnName];
 
             if (value === 'null') {
                 value = null;

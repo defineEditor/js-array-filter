@@ -28,7 +28,7 @@ export type ItemTypeParsed =
     | 'boolean'
     ;
 
-export type ColumnFormat = 'json' | 'xpt' | 'parsed';
+export type ColumnFormat = 'dataset-json1.1' | 'xpt' | 'parsed';
 
 export type ItemDataArray = Array<string | number | boolean | null >;
 

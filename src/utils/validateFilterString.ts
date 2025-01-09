@@ -6,6 +6,7 @@ import { ItemTypeParsed, ColumnMetadataParsed } from '../interfaces/filter';
 const validateFilterString = (
     filterStringRaw: string,
     parsedColumns: ColumnMetadataParsed[],
+    caseInsensitiveColNames: boolean = true,
 ) => {
     try {
         const columnNames = parsedColumns.map((column) => column.name);
@@ -71,15 +72,20 @@ const validateFilterString = (
             conditionElements = conditionElements.filter(
                 (element) => element !== undefined,
             );
-            const columnName = conditionElements[0].toLowerCase();
+            let columnName = conditionElements[0];
             const comparator = conditionElements[1].toLowerCase();
             const value = conditionElements[2];
 
-            if (
-                columnNames
-                    .map((name) => name.toLowerCase())
-                    .includes(columnName)
-            ) {
+            // If filter is case insensitive to column names, use name from the column definitions
+            if (caseInsensitiveColNames) {
+                columnName = columnNames.find(
+                    (name) => name.toLowerCase() === columnName.toLowerCase(),
+                ) || '';
+            }
+
+            if (!columnNames.includes(columnName)) {
+                result[index] = false;
+            } else {
                 // Get type of the variable
                 const type = colTypes[columnName];
                 if (type === 'number') {

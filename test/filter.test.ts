@@ -15,7 +15,7 @@ const filePath = 'data/adsl.ndjson';
 const { columns, data } = readData(filePath);
 
 test('Get filtered rows of dataset with simple "and" filter', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'AGE', operator: 'gt', value: 80 },
             { variable: 'SEX', operator: 'eq', value: 'M' }
@@ -28,7 +28,7 @@ test('Get filtered rows of dataset with simple "and" filter', async () => {
 });
 
 test('Get filtered rows of dataset with simple "or" filter', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'AGE', operator: 'gt', value: 85 },
             { variable: 'DCDECOD', operator: 'eq', value: 'STUDY TERMINATED BY SPONSOR' }
@@ -40,7 +40,7 @@ test('Get filtered rows of dataset with simple "or" filter', async () => {
 });
 
 test('Get filtered rows of dataset with eq operator', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'DCDECOD', operator: 'eq', value: 'STUDY TERMINATED BY SPONSOR' }
         ],
@@ -51,7 +51,7 @@ test('Get filtered rows of dataset with eq operator', async () => {
 });
 
 test('Get filtered rows of dataset with contains operator', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'RACE', operator: 'contains', value: 'WHITE' }
         ],
@@ -62,7 +62,7 @@ test('Get filtered rows of dataset with contains operator', async () => {
 });
 
 test('Get filtered rows of dataset with contains operator and case insensitive option', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'RACE', operator: 'contains', value: 'bLACK' }
         ],
@@ -74,7 +74,7 @@ test('Get filtered rows of dataset with contains operator and case insensitive o
 });
 
 test('Get filtered rows of dataset with notcontains operator', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'RACE', operator: 'notcontains', value: 'WHITE' }
         ],
@@ -85,7 +85,7 @@ test('Get filtered rows of dataset with notcontains operator', async () => {
 });
 
 test('Get filtered rows of dataset with starts operator', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'TRT01P', operator: 'starts', value: 'Xanomeline Low' }
         ],
@@ -96,7 +96,7 @@ test('Get filtered rows of dataset with starts operator', async () => {
 });
 
 test('Get filtered rows of dataset with ends operator', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'TRT01P', operator: 'ends', value: 'ebo' }
         ],
@@ -107,7 +107,7 @@ test('Get filtered rows of dataset with ends operator', async () => {
 });
 
 test('Get filtered rows of dataset with regex operator', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'TRT01P', operator: 'regex', value: '^Xano.*Dose$' }
         ],
@@ -118,7 +118,7 @@ test('Get filtered rows of dataset with regex operator', async () => {
 });
 
 test('Get filtered rows of dataset with regex operator and case insensitive option', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'TRT01P', operator: 'regex', value: '^pLaCEBO$' }
         ],
@@ -130,7 +130,7 @@ test('Get filtered rows of dataset with regex operator and case insensitive opti
 });
 
 test('Get filtered rows of dataset with in operator', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'USUBJID', operator: 'in', value: ['01-701-1015', '01-702-1082'] }
         ],
@@ -141,7 +141,7 @@ test('Get filtered rows of dataset with in operator', async () => {
 });
 
 test('Get filtered rows of dataset with notin operator', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'DCDECOD', operator: 'notin', value: ['ADVERSE EVENT', 'DEATH', 'COMPLETED'] }
         ],
@@ -152,7 +152,7 @@ test('Get filtered rows of dataset with notin operator', async () => {
 });
 
 test('Get filtered rows of dataset with in operator and case insensitive option', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'DCDECOD', operator: 'in', value: ['ADVERSE event', 'DeAtH', 'ComplETED'] }
         ],
@@ -164,7 +164,7 @@ test('Get filtered rows of dataset with in operator and case insensitive option'
 });
 
 test('Get filtered rows of dataset with gt operator', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'AGE', operator: 'gt', value: 80 }
         ],
@@ -175,7 +175,7 @@ test('Get filtered rows of dataset with gt operator', async () => {
 });
 
 test('Get filtered rows of dataset with lt operator', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'AGE', operator: 'lt', value: 53 }
         ],
@@ -186,7 +186,7 @@ test('Get filtered rows of dataset with lt operator', async () => {
 });
 
 test('Get filtered rows of dataset with ge operator', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'AGE', operator: 'ge', value: 89 }
         ],
@@ -197,7 +197,7 @@ test('Get filtered rows of dataset with ge operator', async () => {
 });
 
 test('Get filtered rows of dataset with le operator', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'AGE', operator: 'le', value: 51 }
         ],
@@ -208,7 +208,7 @@ test('Get filtered rows of dataset with le operator', async () => {
 });
 
 test('Get filtered rows of dataset with all types of operators', async () => {
-    const filter = new Filter('json', columns, {
+    const filter = new Filter('dataset-json1.1', columns, {
         conditions: [
             { variable: 'DCDECOD', operator: 'eq', value: 'STUDY TERMINATED BY SPONSOR' },
             { variable: 'RACE', operator: 'contains', value: 'BL' },
