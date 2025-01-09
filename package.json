@@ -1,0 +1,63 @@
+{
+    "name": "js-array-filter",
+    "version": "0.1.0",
+    "description": "Apply filter to an array",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "/dist"
+    ],
+    "scripts": {
+        "test": "jest",
+        "build": "rm -rf dist && tsc",
+        "publish": "npm run build; npm publish",
+        "lint": "eslint . --ext .ts"
+    },
+    "keywords": [
+    ],
+    "prettier": {
+        "tabWidth": 4,
+        "printWidth": 136
+    },
+    "jest": {
+        "preset": "ts-jest",
+        "testEnvironment": "node",
+        "transform": {
+            "^.+\\.ts?$": "ts-jest"
+        },
+        "transformIgnorePatterns": [
+            "<rootDir>/node_modules/"
+        ],
+        "moduleNameMapper": {
+            "^class/(.*)$": "<rootDir>/src/filter/$1",
+            "^interfaces/(.*)$": "<rootDir>/src/interfaces/$1"
+        }
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/defineEditor/js-array-filter.git"
+    },
+    "author": "Dmitry Kolosov",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/jest": "^29.5.2",
+        "@types/node": "^20.16.11",
+        "ts-jest": "^29.1.0",
+        "typescript": "^5.1.3",
+        "husky": "^8.0.0",
+        "eslint": "^8.0.0",
+        "eslint-config-prettier": "^9.1.0",
+        "@typescript-eslint/eslint-plugin": "^5.0.0",
+        "@typescript-eslint/parser": "^5.0.0"
+    },
+    "dependencies": {
+    },
+    "husky": {
+        "hooks": {
+            "pre-commit": "npm run lint"
+        }
+    },
+    "ignorePatterns": [
+        "dist/**"
+    ]
+}
