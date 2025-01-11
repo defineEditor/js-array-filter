@@ -161,9 +161,6 @@ class Filter {
      * @return True if the row passes the filter, false otherwise.
      */
     public filterRow = (row: ItemDataArray): boolean => {
-        if (!this.parsedFilter) {
-            throw new Error("Filter not initialized");
-        }
         const { conditions, variableIndeces, variableTypes, connectors, onlyAndConnectors, onlyOrConnectors, options } =
             this.parsedFilter;
         let result = false;
@@ -195,6 +192,12 @@ class Filter {
                     break;
                 case "notin":
                     conditionResult = !(condValue as unknown as (string | number)[]).includes(value as string | number);
+                    break;
+                case "missing":
+                    conditionResult = (value === null || value === '');
+                    break;
+                case "notMissing":
+                    conditionResult = (value !== null && value !== '');
                     break;
                 default:
                     if (type === "string" && value !== null && condValue !== null) {
@@ -273,6 +276,15 @@ class Filter {
         }
         return result;
     };
+
+    /**
+     * Filter dataframe (array of rows)
+     * @param data - Dataframe.
+     * @return Filtered dataframe.
+     */
+    public filterDataframe = (data: ItemDataArray[]): ItemDataArray[] => {
+        return data.filter((row) => this.filterRow(row));
+    }
 
     /**
      * Validate filter string

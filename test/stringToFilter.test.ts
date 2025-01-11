@@ -170,6 +170,31 @@ describe('stringToFilter', () => {
         expect(new Filter('parsed', columns, filterString).toBasicFilter()).toEqual(expectedFilter);
     });
 
+    it('should handle functions', () => {
+        const filterString = 'name = "John" or notMissing(age)';
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: 'name', operator: 'eq', value: 'John' },
+                { variable: 'age', operator: 'notMissing', value: null, isFunction: true },
+            ],
+            connectors: ['or'],
+        };
+        expect(new Filter('parsed', columns, filterString).toBasicFilter()).toEqual(expectedFilter);
+    });
+
+    it('should handle multiple functions', () => {
+        const filterString = 'name = "John" or notMissing(age) and missing(isActive)';
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: 'name', operator: 'eq', value: 'John' },
+                { variable: 'age', operator: 'notMissing', value: null, isFunction: true },
+                { variable: 'isActive', operator: 'missing', value: null, isFunction: true },
+            ],
+            connectors: ['or', 'and'],
+        };
+        expect(new Filter('parsed', columns, filterString).toBasicFilter()).toEqual(expectedFilter);
+    });
+
     it('should handle all operators and various connectors in one string', () => {
         const filterString =
             'name = "John" and age > 30 or age < 50 and isActive = True or name != "Doe" and age in (25, 30) or age notin (40, 45) and name ? "Jo" or name !? "hn" and name =: "Jo" or name := "hn" and name =~ "J.*n"';
@@ -201,6 +226,26 @@ describe('stringToFilter', () => {
                 'or',
                 'and',
             ],
+        };
+        expect(new Filter('parsed', columns, filterString).toBasicFilter()).toEqual(expectedFilter);
+    });
+
+    it('should handle null value', () => {
+        const filterString = 'name = null';
+        const expectedFilter: BasicFilter = {
+            conditions: [{ variable: 'name', operator: 'eq', value: null }],
+            connectors: [],
+        };
+        expect(new Filter('parsed', columns, filterString).toBasicFilter()).toEqual(expectedFilter);
+    });
+
+    it('should handle string with multiple values', () => {
+        const filterString = 'name in ("John", "Doe", "Smith")';
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: 'name', operator: 'in', value: ['John', 'Doe', 'Smith'] },
+            ],
+            connectors: [],
         };
         expect(new Filter('parsed', columns, filterString).toBasicFilter()).toEqual(expectedFilter);
     });

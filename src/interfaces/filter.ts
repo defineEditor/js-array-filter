@@ -1,8 +1,7 @@
-export type StringOperator = 'in' | 'notin' | 'eq' | 'ne' | 'starts' | 'ends' | 'contains' | 'notcontains' | 'regex';
-export type DateOperator = 'lt' | 'le' | 'gt' | 'ge' | 'in' | 'notin' | 'eq' | 'ne' |
-    'starts' | 'ends' | 'contains' | 'notcontains' | 'regex';
-export type NumberOperator = 'lt' | 'le' | 'gt' | 'ge' | 'in' | 'notin' | 'eq' | 'ne';
-export type BooleanOperator = 'eq' | 'ne';
+export type StringOperator = 'lt' | 'le' | 'gt' | 'ge' | 'in' | 'notin' | 'eq' | 'ne' |
+    'starts' | 'ends' | 'contains' | 'notcontains' | 'regex' | 'notMissing' | 'missing';
+export type NumberOperator = 'lt' | 'le' | 'gt' | 'ge' | 'in' | 'notin' | 'eq' | 'ne' | 'notMissing' | 'missing';
+export type BooleanOperator = 'eq' | 'ne' | 'notMissing' | 'missing';
 
 export type ItemTypeDatasetJson =
     | 'string'
@@ -42,8 +41,9 @@ export type Connector = 'and' | 'or';
 
 export interface FilterCondition {
     variable: string;
-    operator: StringOperator | DateOperator | NumberOperator | BooleanOperator;
+    operator: StringOperator | NumberOperator | BooleanOperator;
     value: string | number | boolean | null | string[] | number[];
+    isFunction?: boolean;
 }
 
 export interface BasicFilter {

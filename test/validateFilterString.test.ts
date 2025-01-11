@@ -53,4 +53,30 @@ describe('validateFilterString', () => {
             false,
         );
     });
+    it('should return true for an function', () => {
+        const filterString = 'notMissing(RACE)';
+        expect(new Filter('parsed',columns, '', { caseInsensitiveColNames: false }).validateFilterString(filterString)).toBe(
+            false,
+        );
+    });
+    it('should return true for an function in multiple conditions', () => {
+        const filterString = 'age in (13, 14) and notMissing(RACE) or isActive = true';
+        expect(new Filter('parsed',columns, '').validateFilterString(filterString)).toBe(
+            true,
+        );
+    });
+
+    it('should return false for a completely incorrect filter string', () => {
+        const filterString = 'completely incorrect filter string';
+        expect(new Filter('parsed', columns, '').validateFilterString(filterString)).toBe(
+            false,
+        );
+    });
+
+    it('should return false for an incomplete filter string', () => {
+        const filterString = 'age eq';
+        expect(new Filter('parsed', columns, '').validateFilterString(filterString)).toBe(
+            false,
+        );
+    });
 });

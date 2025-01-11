@@ -71,10 +71,21 @@ const stringToFilter = (
             conditionElements = conditionElements.filter(
                 (element) => element !== undefined,
             );
-            let columnName = conditionElements[0];
-            const comparator = conditionElements[1].toLowerCase();
-            const rawValue = conditionElements[2];
-            let value: FilterCondition['value'] = rawValue;
+
+            let columnName: string;
+            let comparator;
+            let value: FilterCondition['value'];
+            let isFunction: boolean | undefined = undefined;
+            if (filterRegex.conditionFunction.test(rawConditionCheck)) {
+                comparator = conditionElements[0];
+                columnName = conditionElements[1];
+                value = '';
+                isFunction = true;
+            } else {
+                columnName = conditionElements[0];
+                comparator = conditionElements[1].toLowerCase();
+                value = conditionElements[2];
+            }
 
             let operator: FilterCondition['operator'] = 'eq';
 
@@ -107,11 +118,13 @@ const stringToFilter = (
 
             if (value === 'null') {
                 value = null;
+            } else if (isFunction) {
+                value = null;
             } else if (colType === 'number') {
                 if (!isMultipleValue) {
                     value = parseFloat(value as string);
                 } else if (isMultipleValue) {
-                    value = rawValue
+                    value = value
                         .trim()
                         .replace(/^\((.*)\)$/, '$1')
                         .split(',')
@@ -122,10 +135,10 @@ const stringToFilter = (
             } else if (colType === 'string') {
                 if (!isMultipleValue) {
                     // Remove quotes
-                    value = rawValue.trim().replace(/^(['"])(.*)\1$/, '$2');
+                    value = value.trim().replace(/^(['"])(.*)\1$/, '$2');
                 } else if (isMultipleValue) {
                     // Remove brackets, split by comma, remove quotes
-                    value = rawValue
+                    value = value
                         .trim()
                         .replace(/^\((.*)\)$/, '$1')
                         .split(',')
@@ -139,6 +152,7 @@ const stringToFilter = (
                 variable: columnName,
                 operator,
                 value,
+                isFunction,
             };
 
             result.conditions.push(condition);

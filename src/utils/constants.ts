@@ -18,6 +18,8 @@ export const operatorLabels: OperatorLabels = {
     starts: '=:',
     ends: ':=',
     regex: '=~',
+    notMissing: 'notMissing',
+    missing: 'missing',
 };
 
 export const operatorHumanFriendlyLabels: OperatorLabels = {
@@ -34,6 +36,8 @@ export const operatorHumanFriendlyLabels: OperatorLabels = {
     starts: 'starts with',
     ends: 'ends with',
     regex: 'regex',
+    notMissing: 'not missing',
+    missing: 'missing',
 };
 
 export const stringOperators = Object.keys(operatorLabels);
@@ -47,8 +51,10 @@ export const numberOperators = [
     'ge',
     'in',
     'notin',
+    'notMissing',
+    'missing',
 ];
-export const booleanOperators = ['eq', 'ne'];
+export const booleanOperators = ['eq', 'ne', 'notMissing', 'missing'];
 
 export const operatorLabelsInverse: {
     [name: string]: FilterCondition['operator'];

@@ -72,9 +72,20 @@ const validateFilterString = (
             conditionElements = conditionElements.filter(
                 (element) => element !== undefined,
             );
-            let columnName = conditionElements[0];
-            const comparator = conditionElements[1].toLowerCase();
-            const value = conditionElements[2];
+            let columnName: string;
+            let comparator;
+            let value;
+            let isFunction: boolean | undefined = undefined;
+            if (filterRegex.conditionFunction.test(rawConditionCheck)) {
+                comparator = conditionElements[0];
+                columnName = conditionElements[1];
+                value = '';
+                isFunction = true;
+            } else {
+                columnName = conditionElements[0];
+                comparator = conditionElements[1].toLowerCase();
+                value = conditionElements[2];
+            }
 
             // If filter is case insensitive to column names, use name from the column definitions
             if (caseInsensitiveColNames) {
@@ -85,6 +96,8 @@ const validateFilterString = (
 
             if (!columnNames.includes(columnName)) {
                 result[index] = false;
+            } else if (isFunction) {
+                result[index] = true;
             } else {
                 // Get type of the variable
                 const type = colTypes[columnName];

@@ -282,4 +282,112 @@ describe('filterToString', () => {
             'name = "John" and age > 30 or age < 50 and isActive = true or name != "Doe" and age in (25, 30) or age notin (40, 45) and name ? "Jo" or name !? "hn" and name =: "Jo" or name := "hn" and name =~ "J.*n"';
         expect(new Filter('dataset-json1.1', columns, filter).toString()).toBe(expectedString);
     });
+
+    it('should handle functions', () => {
+        const filter: BasicFilter = {
+            conditions: [
+                { variable: 'name', operator: 'eq', value: 'John' },
+                { variable: 'age', operator: 'notMissing', value: null, isFunction: true },
+            ],
+            connectors: ['or'],
+        };
+        const columns = filter.conditions.map(condition => ({
+            name: condition.variable,
+            dataType: condition.variable === 'age' ? 'integer' : 'string'
+        })) as ColumnMetadataDatasetJson[];
+        const expectedString = 'name = "John" or notMissing(age)';
+        expect(new Filter('dataset-json1.1', columns, filter).toString()).toBe(expectedString);
+    });
+
+    it('should handle multiple functions', () => {
+        const filter: BasicFilter = {
+            conditions: [
+                { variable: 'name', operator: 'eq', value: 'John' },
+                { variable: 'age', operator: 'notMissing', value: null, isFunction: true },
+                { variable: 'isActive', operator: 'missing', value: null, isFunction: true },
+            ],
+            connectors: ['or', 'and'],
+        };
+        const columns = filter.conditions.map(condition => ({
+            name: condition.variable,
+            dataType: condition.variable === 'age' ? 'integer' : (condition.variable === 'isActive' ? 'boolean' : 'string')
+        })) as ColumnMetadataDatasetJson[];
+        const expectedString = 'name = "John" or notMissing(age) and missing(isActive)';
+        expect(new Filter('dataset-json1.1', columns, filter).toString()).toBe(expectedString);
+    });
+
+    it('should handle empty array for numeric variable', () => {
+        const filter: BasicFilter = {
+            conditions: [
+                { variable: 'age', operator: 'in', value: [] },
+            ],
+            connectors: [],
+        };
+        const columns = filter.conditions.map(condition => ({
+            name: condition.variable,
+            dataType: 'integer'
+        })) as ColumnMetadataDatasetJson[];
+        const expectedString = 'age in ()';
+        expect(new Filter('dataset-json1.1', columns, filter).toString()).toBe(expectedString);
+    });
+
+    it('should handle empty array for boolean variable', () => {
+        const filter: BasicFilter = {
+            conditions: [
+                { variable: 'isActive', operator: 'in', value: [] },
+            ],
+            connectors: [],
+        };
+        const columns = filter.conditions.map(condition => ({
+            name: condition.variable,
+            dataType: 'boolean'
+        })) as ColumnMetadataDatasetJson[];
+        const expectedString = 'isActive in ()';
+        expect(new Filter('dataset-json1.1', columns, filter).toString()).toBe(expectedString);
+    });
+
+    it('should handle empty array for character variable', () => {
+        const filter: BasicFilter = {
+            conditions: [
+                { variable: 'name', operator: 'in', value: [] },
+            ],
+            connectors: [],
+        };
+        const columns = filter.conditions.map(condition => ({
+            name: condition.variable,
+            dataType: 'string'
+        })) as ColumnMetadataDatasetJson[];
+        const expectedString = 'name in ()';
+        expect(new Filter('dataset-json1.1', columns, filter).toString()).toBe(expectedString);
+    });
+
+    it('should handle null value', () => {
+        const filter: BasicFilter = {
+            conditions: [
+                { variable: 'name', operator: 'eq', value: null },
+            ],
+            connectors: [],
+        };
+        const columns = filter.conditions.map(condition => ({
+            name: condition.variable,
+            dataType: 'string'
+        })) as ColumnMetadataDatasetJson[];
+        const expectedString = 'name = null';
+        expect(new Filter('dataset-json1.1', columns, filter).toString()).toBe(expectedString);
+    });
+
+    it('should handle string with multiple values', () => {
+        const filter: BasicFilter = {
+            conditions: [
+                { variable: 'name', operator: 'in', value: ['John', 'Doe'] },
+            ],
+            connectors: [],
+        };
+        const columns = filter.conditions.map(condition => ({
+            name: condition.variable,
+            dataType: 'string'
+        })) as ColumnMetadataDatasetJson[];
+        const expectedString = 'name in ("John", "Doe")';
+        expect(new Filter('dataset-json1.1', columns, filter).toString()).toBe(expectedString);
+    });
 });
