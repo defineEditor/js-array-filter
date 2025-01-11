@@ -57,6 +57,18 @@ const filteredData = data.filter(row => filter.filterRow(row));
 console.log(filteredData); // Output: [[85, 'M'], [90, 'M']]
 ```
 
+### Applying the Filter to a Dataframe
+```TypeScript
+const data = [
+    [85, 'M'],
+    [70, 'F'],
+    [90, 'M']
+];
+
+const filteredData = filter.filterDataframe(data);
+console.log(filteredData); // Output: [[85, 'M'], [90, 'M']]
+```
+
 ### Updating the Filter
 ```TypeScript
 filter.update({
@@ -82,6 +94,43 @@ const isValid = filter.validateFilterString(filterString);
 console.log(isValid); // Output: true or false
 ```
 
+## Operators
+
+### String Operators
+- `lt`: Less than
+- `le`: Less than or equal to
+- `gt`: Greater than
+- `ge`: Greater than or equal to
+- `in`: In array
+- `notin`: Not in array
+- `eq`: Equal to
+- `ne`: Not equal to
+- `starts`: Starts with
+- `ends`: Ends with
+- `contains`: Contains
+- `notcontains`: Does not contain
+- `regex`: Matches regular expression
+- `notMissing`: Not missing (not null or empty)
+- `missing`: Missing (null or empty)
+
+### Number Operators
+- `lt`: Less than
+- `le`: Less than or equal to
+- `gt`: Greater than
+- `ge`: Greater than or equal to
+- `in`: In array
+- `notin`: Not in array
+- `eq`: Equal to
+- `ne`: Not equal to
+- `notMissing`: Not missing (not null or empty)
+- `missing`: Missing (null or empty)
+
+### Boolean Operators
+- `eq`: Equal to
+- `ne`: Not equal to
+- `notMissing`: Not missing (not null or empty)
+- `missing`: Missing (null or empty)
+
 ## Methods
 
 ### `update`
@@ -99,6 +148,15 @@ Applies the filter to a single row of data.
 
 #### Returns
 - `boolean`: True if the row passes the filter, false otherwise.
+
+### `filterDataframe`
+Applies the filter to a dataframe (array of rows).
+
+#### Parameters
+- `data` (ItemDataArray[]): The dataframe to filter.
+
+#### Returns
+- `ItemDataArray[]`: The filtered dataframe.
 
 ### `toString`
 Converts the filter to a string representation.
