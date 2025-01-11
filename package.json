@@ -10,10 +10,11 @@
     "scripts": {
         "test": "jest --coverage",
         "build": "rm -rf dist && tsc",
-        "publish": "npm run build; npm publish",
+        "publish": "npm run test && npm run lint && npm run build && npm publish",
         "lint": "eslint . --ext .ts"
     },
     "keywords": [
+        "dataset-json", "xport"
     ],
     "jest": {
         "preset": "ts-jest",
