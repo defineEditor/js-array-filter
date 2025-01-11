@@ -15,10 +15,6 @@
     },
     "keywords": [
     ],
-    "prettier": {
-        "tabWidth": 4,
-        "printWidth": 136
-    },
     "jest": {
         "preset": "ts-jest",
         "testEnvironment": "node",
