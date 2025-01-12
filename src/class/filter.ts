@@ -7,7 +7,7 @@ import {
     ColumnMetadata,
     ColumnMetadataParsed,
     ItemTypeParsed,
-} from "interfaces/filter";
+} from "../interfaces/filter";
 import filterToString from "../utils/filterToString";
 import stringToFilter from "../utils/stringToFilter";
 import validateFilterString from "../utils/validateFilterString";
