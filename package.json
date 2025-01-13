@@ -1,6 +1,6 @@
 {
     "name": "js-array-filter",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "Apply filter to an array",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
