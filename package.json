@@ -1,6 +1,6 @@
 {
     "name": "js-array-filter",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "description": "Apply filter to an array",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -10,11 +10,12 @@
     "scripts": {
         "test": "jest --coverage",
         "build": "rm -rf dist && tsc",
-        "publish": "npm run test && npm run lint && npm run build && npm publish",
+        "publish": "npm run test && npm run lint && npm run build",
         "lint": "eslint . --ext .ts"
     },
     "keywords": [
-        "dataset-json", "xport"
+        "dataset-json",
+        "xport"
     ],
     "jest": {
         "preset": "ts-jest",
@@ -47,8 +48,7 @@
         "@typescript-eslint/eslint-plugin": "^5.0.0",
         "@typescript-eslint/parser": "^5.0.0"
     },
-    "dependencies": {
-    },
+    "dependencies": {},
     "husky": {
         "hooks": {
             "pre-commit": "npm run lint"

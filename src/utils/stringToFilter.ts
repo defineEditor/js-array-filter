@@ -152,7 +152,7 @@ const stringToFilter = (
                 variable: columnName,
                 operator,
                 value,
-                isFunction,
+                ...(isFunction !== undefined && { isFunction }),
             };
 
             result.conditions.push(condition);

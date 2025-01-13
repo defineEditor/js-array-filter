@@ -7,7 +7,7 @@ import {
     ColumnMetadata,
     ColumnMetadataParsed,
     ItemTypeParsed,
-} from "interfaces/filter";
+} from "../interfaces/filter";
 import filterToString from "../utils/filterToString";
 import stringToFilter from "../utils/stringToFilter";
 import validateFilterString from "../utils/validateFilterString";
@@ -314,10 +314,11 @@ class Filter {
 
     /**
      * Convert filter object to string
+     * @param filter - Optional filter string.
      * @returns Filter string.
      */
-    public toString = (): string => {
-        return filterToString(this.parsedFilter);
+    public toString = (filter?: BasicFilter): string => {
+        return filterToString(filter !== undefined ? filter : this.parsedFilter);
     };
 }
 
