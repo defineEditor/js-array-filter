@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.3]
+### Added
+- Properly exporting filterRegex
+
 ## [0.1.2]
 ### Added
 - Allowing toString to accept BasicFilter argument

@@ -1,4 +1,4 @@
-import filterRegex from './filterRegex';
+import { filterRegex } from './filterRegex';
 import makeRegexStrict from './makeRegexStrict';
 import { ItemTypeParsed, ColumnMetadataParsed } from '../interfaces/filter';
 

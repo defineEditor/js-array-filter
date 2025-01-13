@@ -1,4 +1,4 @@
-const filterRegex = {
+export const filterRegex = {
     variable: /\w+/,
     variableParse: /(\w+)/,
     itemString: /["][^"]*?["]|['][^']*?[']|null/i,
@@ -97,5 +97,3 @@ filterRegex.filter = new RegExp(
     `^(${filterRegex.condition.source})((?:\\s+${filterRegex.conditionConnector.source}\\s+${filterRegex.condition.source}))*$`,
     'i',
 );
-
-export default filterRegex;

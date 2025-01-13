@@ -1,4 +1,4 @@
-import filterRegex from './filterRegex';
+import { filterRegex } from './filterRegex';
 import makeRegexStrict from './makeRegexStrict';
 import { operatorLabelsInverse } from './constants';
 import { FilterCondition, BasicFilter, Connector, ColumnMetadataParsed, ItemTypeParsed } from '../interfaces/filter';
