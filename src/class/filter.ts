@@ -314,10 +314,11 @@ class Filter {
 
     /**
      * Convert filter object to string
+     * @param filter - Optional filter string.
      * @returns Filter string.
      */
-    public toString = (): string => {
-        return filterToString(this.parsedFilter);
+    public toString = (filter?: BasicFilter): string => {
+        return filterToString(filter !== undefined ? filter : this.parsedFilter);
     };
 }
 
