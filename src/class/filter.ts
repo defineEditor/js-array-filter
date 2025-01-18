@@ -169,7 +169,7 @@ class Filter {
             const condition = conditions[i];
             let value = row[variableIndeces[i]];
             let condValue = condition.value;
-            const type = variableTypes[i];
+            const type = variableTypes[variableIndeces[i]];
             let conditionResult = false;
             if (type === "string" && options?.caseInsensitive === true && value !== null && condValue !== null) {
                 value = (value as string).toLowerCase();

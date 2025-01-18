@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.4]
+### Bug
+- Type incorrectly identified in filterRow
+
 ## [0.1.3]
 ### Added
 - Properly exporting filterRegex
