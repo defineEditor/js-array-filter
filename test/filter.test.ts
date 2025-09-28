@@ -309,7 +309,10 @@ test("Filter update method", async () => {
 });
 
 test('Filter with dataTypeFormat: "xpt"', async () => {
-    const xptColumns = columns.map((col) => ({ ...col, dataType: col.dataType === "string" ? "Char" : "Num" })) as unknown as ColumnMetadata[];
+    const xptColumns = columns.map((col) => ({
+        ...col,
+        dataType: col.dataType === "string" ? "Char" : "Num",
+    })) as unknown as ColumnMetadata[];
     const filter = new Filter("xpt", xptColumns, {
         conditions: [{ variable: "AGE", operator: "gt", value: 80 }],
         connectors: [],
