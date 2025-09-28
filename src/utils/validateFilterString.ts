@@ -1,12 +1,12 @@
-import { filterRegex } from './filterRegex';
-import makeRegexStrict from './makeRegexStrict';
-import { ItemTypeParsed, ColumnMetadataParsed } from '../interfaces/filter';
+import { filterRegex } from "./filterRegex";
+import makeRegexStrict from "./makeRegexStrict";
+import { ItemTypeParsed, ColumnMetadataParsed } from "../interfaces/filter";
 
 // Validate filter string
 const validateFilterString = (
     filterStringRaw: string,
     parsedColumns: ColumnMetadataParsed[],
-    caseInsensitiveColNames: boolean = true,
+    caseInsensitiveColNames: boolean = true
 ) => {
     try {
         const columnNames = parsedColumns.map((column) => column.name);
@@ -18,7 +18,7 @@ const validateFilterString = (
         // Trim leading and trailing spaces;
         const filterString = filterStringRaw.trim();
         // Quick checks
-        if (filterString === '') {
+        if (filterString === "") {
             return true;
         }
         if (filterRegex.filter.test(filterString) === false) {
@@ -32,30 +32,21 @@ const validateFilterString = (
         }
         // Remove all undefined conditions (coming from (AND condition) part) and connectors
         const rawFilterUpdated = rawFilter.filter(
-            (element) =>
-                element !== undefined &&
-                makeRegexStrict(filterRegex.conditionConnector).test(
-                    element,
-                ) === false,
+            (element) => element !== undefined && makeRegexStrict(filterRegex.conditionConnector).test(element) === false
         );
         // If there is more than one condition, extract them one by one;
         const rawConditionChecks: string[] = [];
         if (rawFilterUpdated.length >= 3) {
             let rawConditions = filterString;
-            let rawConditionCheck =
-                filterRegex.conditionExtract.exec(rawConditions);
+            let rawConditionCheck = filterRegex.conditionExtract.exec(rawConditions);
             const nextConditionCheckRegex = new RegExp(
                 `${filterRegex.condition.source}${filterRegex.conditionConnector.source}?(.*)$`,
-                'i',
+                "i"
             );
             while (rawConditionCheck !== null) {
                 rawConditionChecks.push(rawConditionCheck[1]);
-                rawConditions = rawConditions.replace(
-                    nextConditionCheckRegex,
-                    '$1',
-                );
-                rawConditionCheck =
-                    filterRegex.conditionExtract.exec(rawConditions);
+                rawConditions = rawConditions.replace(nextConditionCheckRegex, "$1");
+                rawConditionCheck = filterRegex.conditionExtract.exec(rawConditions);
             }
         } else {
             // Only 1 condition is provided;
@@ -65,13 +56,9 @@ const validateFilterString = (
         rawConditionChecks.forEach((rawConditionCheck, index) => {
             // Default to failed
             result[index] = false;
-            let conditionElements = (
-                filterRegex.conditionParse.exec(rawConditionCheck) as string[]
-            ).slice(1);
+            let conditionElements = (filterRegex.conditionParse.exec(rawConditionCheck) as string[]).slice(1);
             // Remove all undefined elements (come from the (in|notin) vs (eq,ne,...) fork)
-            conditionElements = conditionElements.filter(
-                (element) => element !== undefined,
-            );
+            conditionElements = conditionElements.filter((element) => element !== undefined);
             let columnName: string;
             let comparator;
             let value;
@@ -79,7 +66,7 @@ const validateFilterString = (
             if (filterRegex.conditionFunction.test(rawConditionCheck)) {
                 comparator = conditionElements[0];
                 columnName = conditionElements[1];
-                value = '';
+                value = "";
                 isFunction = true;
             } else {
                 columnName = conditionElements[0];
@@ -89,9 +76,7 @@ const validateFilterString = (
 
             // If filter is case insensitive to column names, use name from the column definitions
             if (caseInsensitiveColNames) {
-                columnName = columnNames.find(
-                    (name) => name.toLowerCase() === columnName.toLowerCase(),
-                ) || '';
+                columnName = columnNames.find((name) => name.toLowerCase() === columnName.toLowerCase()) || "";
             }
 
             if (!columnNames.includes(columnName)) {
@@ -101,43 +86,33 @@ const validateFilterString = (
             } else {
                 // Get type of the variable
                 const type = colTypes[columnName];
-                if (type === 'number') {
+                if (type === "number") {
                     if (
-                        makeRegexStrict(filterRegex.comparatorNumeric).test(
-                            comparator,
-                        ) &&
-                        (!Number.isNaN(Number(value)) || value === 'null')
+                        makeRegexStrict(filterRegex.comparatorNumeric).test(comparator) &&
+                        (!Number.isNaN(Number(value)) || value === "null")
                     ) {
                         result[index] = true;
                     } else if (
-                        makeRegexStrict(filterRegex.comparatorMultiple).test(
-                            comparator,
-                        ) &&
+                        makeRegexStrict(filterRegex.comparatorMultiple).test(comparator) &&
                         makeRegexStrict(filterRegex.itemMultiple).test(value)
                     ) {
                         result[index] = true;
                     }
-                } else if (type === 'string') {
+                } else if (type === "string") {
                     if (
-                        makeRegexStrict(filterRegex.comparatorString).test(
-                            comparator,
-                        ) &&
+                        makeRegexStrict(filterRegex.comparatorString).test(comparator) &&
                         makeRegexStrict(filterRegex.itemString).test(value)
                     ) {
                         result[index] = true;
                     } else if (
-                        makeRegexStrict(filterRegex.comparatorMultiple).test(
-                            comparator,
-                        ) &&
+                        makeRegexStrict(filterRegex.comparatorMultiple).test(comparator) &&
                         makeRegexStrict(filterRegex.itemMultiple).test(value)
                     ) {
                         result[index] = true;
                     }
-                } else if (type === 'boolean') {
+                } else if (type === "boolean") {
                     if (
-                        makeRegexStrict(filterRegex.comparatorBoolean).test(
-                            comparator,
-                        ) &&
+                        makeRegexStrict(filterRegex.comparatorBoolean).test(comparator) &&
                         makeRegexStrict(filterRegex.itemBoolean).test(value)
                     ) {
                         result[index] = true;
