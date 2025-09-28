@@ -2,7 +2,7 @@
 
 ## [0.1.5]
 ### Bug
-- Incorrectly parsing string with IN operator and values with commands: VAR IN ("VAL,UE1", "VALUE2").
+- Incorrectly parsing string with IN operator and values with commas: VAR IN ("VAL,UE1", "VALUE2").
 
 ## [0.1.4]
 ### Bug
