@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.6]
+### Bug
+- Proper handling of upcase connectors.
+- Updating dependencies.
+
 ## [0.1.5]
 ### Bug
 - Incorrectly parsing string with IN operator and values with commas: VAR IN ("VAL,UE1", "VALUE2").
