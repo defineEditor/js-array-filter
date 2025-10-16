@@ -241,4 +241,17 @@ describe("stringToFilter", () => {
         };
         expect(new Filter("parsed", columns, filterString).toBasicFilter()).toEqual(expectedFilter);
     });
+
+    it("should handle string with uppercase connectors", () => {
+        const filterString = 'name in ("John, Doe", "Smith") AND age > 30 OR isActive = True';
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "in", value: ["John, Doe", "Smith"] },
+                { variable: "age", operator: "gt", value: 30 },
+                { variable: "isActive", operator: "eq", value: true },
+            ],
+            connectors: ["and", "or"],
+        };
+        expect(new Filter("parsed", columns, filterString).toBasicFilter()).toEqual(expectedFilter);
+    });
 });

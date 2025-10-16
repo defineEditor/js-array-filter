@@ -74,7 +74,7 @@ const stringToFilter = (
                 rawConditions = rawConditions.replace(nextConditionCheckRegex, "$1").trim();
                 rawConditionCheck = filterRegex.conditionExtract.exec(rawConditions);
                 if (connector !== "") {
-                    result.connectors.push(connector as Connector);
+                    result.connectors.push(connector.toLowerCase() as Connector);
                 }
             }
         } else {
