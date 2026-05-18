@@ -8,7 +8,15 @@ describe("stringToFilter", () => {
             dataType: "string",
         },
         {
+            name: "alias",
+            dataType: "string",
+        },
+        {
             name: "age",
+            dataType: "number",
+        },
+        {
+            name: "score",
             dataType: "number",
         },
         {
@@ -252,6 +260,70 @@ describe("stringToFilter", () => {
             ],
             connectors: ["and", "or"],
         };
+        expect(new Filter("parsed", columns, filterString).toBasicFilter()).toEqual(expectedFilter);
+    });
+
+    it("should parse compareVariable conditions", () => {
+        const filterString = "name = alias and score > age";
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: null, compareVariable: "alias" },
+                { variable: "score", operator: "gt", value: null, compareVariable: "age" },
+            ],
+            connectors: ["and"],
+        };
+
+        expect(new Filter("parsed", columns, filterString).toBasicFilter()).toEqual(expectedFilter);
+    });
+
+    it("should parse parenthesis into connectorPriorities", () => {
+        const filterString = 'name = "John" and (age > 30 or score > 90)';
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: "John" },
+                { variable: "age", operator: "gt", value: 30 },
+                { variable: "score", operator: "gt", value: 90 },
+            ],
+            connectors: ["and", "or"],
+            connectorPriorities: [0, 1],
+        };
+
+        expect(new Filter("parsed", columns, filterString).toBasicFilter()).toEqual(expectedFilter);
+    });
+
+    it("should parse nested parenthesis with in lists and compareVariable", () => {
+        const filterString =
+            '((age > 50 or age in (20,30,40) or trt01p != trt01a) and (name in ("John", "Dave") or trt01p = "Placebo"))';
+        const filterColumns: ColumnMetadataParsed[] = [
+            ...columns,
+            { name: "trt01p", dataType: "string" },
+            { name: "trt01a", dataType: "string" },
+        ];
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: "age", operator: "gt", value: 50 },
+                { variable: "age", operator: "in", value: [20, 30, 40] },
+                { variable: "trt01p", operator: "ne", value: null, compareVariable: "trt01a" },
+                { variable: "name", operator: "in", value: ["John", "Dave"] },
+                { variable: "trt01p", operator: "eq", value: "Placebo" },
+            ],
+            connectors: ["or", "or", "and", "or"],
+            connectorPriorities: [1, 1, 0, 1],
+        };
+
+        expect(new Filter("parsed", filterColumns, filterString).toBasicFilter()).toEqual(expectedFilter);
+    });
+
+    it("should ignore outermost parenthesis when all priorities are equal", () => {
+        const filterString = '(name = "John" and age > 30)';
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: "John" },
+                { variable: "age", operator: "gt", value: 30 },
+            ],
+            connectors: ["and"],
+        };
+
         expect(new Filter("parsed", columns, filterString).toBasicFilter()).toEqual(expectedFilter);
     });
 });

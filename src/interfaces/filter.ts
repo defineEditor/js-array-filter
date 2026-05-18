@@ -50,11 +50,13 @@ export interface FilterCondition {
     operator: StringOperator | NumberOperator | BooleanOperator;
     value: string | number | boolean | null | string[] | number[];
     isFunction?: boolean;
+    compareVariable?: string;
 }
 
 export interface BasicFilter {
     conditions: FilterCondition[];
     connectors: Connector[];
+    connectorPriorities?: number[];
     options?: {
         caseInsensitive: boolean;
     };
@@ -62,6 +64,7 @@ export interface BasicFilter {
 
 export interface ParsedFilter extends BasicFilter {
     variableIndeces: number[];
+    compareVariableIndeces?: (number | null)[];
     variableTypes: string[];
     onlyAndConnectors: boolean;
     onlyOrConnectors: boolean;

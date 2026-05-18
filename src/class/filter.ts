@@ -3,17 +3,18 @@ import {
     BasicFilter,
     ColumnFormat,
     ParsedFilter,
-    Connector,
     ColumnMetadata,
     ColumnMetadataParsed,
     ItemTypeParsed,
 } from "../interfaces/filter";
 import filterToString from "../utils/filterToString";
+import { buildExpressionTree, ExpressionNode } from "../utils/filterExpression";
 import stringToFilter from "../utils/stringToFilter";
 import validateFilterString from "../utils/validateFilterString";
 
 class Filter {
     private parsedFilter: ParsedFilter;
+    private expressionTree: ExpressionNode | null;
     private parsedColumns: ColumnMetadataParsed[];
     private dataTypeFormat: "dataset-json1.1" | "xpt" | "parsed";
     private caseInsensitiveColNames: boolean;
@@ -22,7 +23,7 @@ class Filter {
         dataTypeFormat: ColumnFormat,
         columns: ColumnMetadata[],
         filter: BasicFilter | string,
-        options: { caseInsensitiveColNames: boolean } = { caseInsensitiveColNames: true }
+        options: { caseInsensitiveColNames: boolean } = { caseInsensitiveColNames: true },
     ) {
         this.caseInsensitiveColNames = options.caseInsensitiveColNames;
         // Column Format
@@ -42,6 +43,7 @@ class Filter {
         } else {
             this.parsedFilter = this.parse(filter, this.parsedColumns);
         }
+        this.expressionTree = buildExpressionTree(this.parsedFilter);
     }
 
     /**
@@ -54,7 +56,7 @@ class Filter {
     public update = (
         filter: BasicFilter | string,
         columns?: Array<ColumnMetadata>,
-        options: { caseInsensitiveColNames: boolean } = { caseInsensitiveColNames: true }
+        options: { caseInsensitiveColNames: boolean } = { caseInsensitiveColNames: true },
     ): void => {
         this.caseInsensitiveColNames = options.caseInsensitiveColNames;
         let parsedColumns: ColumnMetadataParsed[];
@@ -65,11 +67,12 @@ class Filter {
             parsedColumns = this.parsedColumns;
         }
         if (typeof filter === "string") {
-            const basicFilter = stringToFilter(filter, this.parsedColumns);
+            const basicFilter = stringToFilter(filter, this.parsedColumns, this.caseInsensitiveColNames);
             this.parsedFilter = this.parse(basicFilter, parsedColumns);
         } else {
             this.parsedFilter = this.parse(filter, parsedColumns);
         }
+        this.expressionTree = buildExpressionTree(this.parsedFilter);
     };
 
     /**
@@ -77,10 +80,7 @@ class Filter {
      * @param columns - Column metadata.
      * @return Parsed columns object with standard data types.
      */
-    public parseColumns = (
-        dataTypeFormat: ColumnFormat,
-        columns: ColumnMetadata[]
-    ): ColumnMetadataParsed[] => {
+    public parseColumns = (dataTypeFormat: ColumnFormat, columns: ColumnMetadata[]): ColumnMetadataParsed[] => {
         let result: ColumnMetadataParsed[] = [];
         if (dataTypeFormat === "parsed") {
             result = columns as ColumnMetadataParsed[];
@@ -118,28 +118,54 @@ class Filter {
      * @return Parsed filter object with variable indeces added.
      */
     private parse = (filter: BasicFilter, columns: ColumnMetadataParsed[]): ParsedFilter => {
-        const variableIndeces: number[] = [];
-        filter.conditions.forEach((condition) => {
-            const index = columns.findIndex((column) => {
+        const getColumnIndex = (variableName: string): number => {
+            return columns.findIndex((column) => {
                 if (this.caseInsensitiveColNames) {
-                    return column.name.toLowerCase() === condition.variable.toLowerCase();
-                } else {
-                    return column.name === condition.variable;
-
+                    return column.name.toLowerCase() === variableName.toLowerCase();
                 }
-            }
-            );
-            if (index !== -1) {
-                variableIndeces.push(index);
-            } else {
+
+                return column.name === variableName;
+            });
+        };
+
+        const variableIndeces = filter.conditions.map((condition) => {
+            const index = getColumnIndex(condition.variable);
+            if (index === -1) {
                 throw new Error(`Variable ${condition.variable} not found`);
             }
+            return index;
         });
 
         // Check the number of connectors corresponds to the number of variables;
         if (filter.conditions.length > 0 && filter.conditions.length - 1 !== filter.connectors.length) {
             throw new Error("Number of logical connectors must be equal to the number of conditions minus one");
         }
+
+        if (filter.connectorPriorities !== undefined && filter.connectorPriorities.length !== filter.connectors.length) {
+            throw new Error("Number of connector priorities must be equal to the number of connectors");
+        }
+
+        const compareVariableIndeces = filter.conditions.some((condition) => condition.compareVariable !== undefined)
+            ? filter.conditions.map((condition, conditionIndex) => {
+                  if (condition.compareVariable === undefined) {
+                      return null;
+                  }
+                  if (condition.value !== null) {
+                      throw new Error("Condition value must be null when compareVariable is specified");
+                  }
+
+                  const index = getColumnIndex(condition.compareVariable);
+                  if (index === -1) {
+                      throw new Error(`Variable ${condition.compareVariable} not found`);
+                  }
+
+                  if (columns[index].dataType !== columns[variableIndeces[conditionIndex]].dataType) {
+                      throw new Error(`Variable ${condition.compareVariable} type does not match ${condition.variable}`);
+                  }
+
+                  return index;
+              })
+            : undefined;
 
         const onlyAndConnectors = filter.connectors.every((connector) => connector === "and");
         const onlyOrConnectors = filter.connectors.every((connector) => connector === "or");
@@ -149,10 +175,123 @@ class Filter {
         return {
             ...filter,
             variableIndeces,
+            compareVariableIndeces,
             onlyAndConnectors,
             onlyOrConnectors,
             variableTypes,
         };
+    };
+
+    private evaluateCondition = (conditionIndex: number, row: ItemDataArray): boolean => {
+        const { conditions, compareVariableIndeces, options, variableIndeces, variableTypes } = this.parsedFilter;
+        const condition = conditions[conditionIndex];
+        const variableIndex = variableIndeces[conditionIndex];
+        const type = variableTypes[variableIndex];
+        let value = row[variableIndex];
+        let condValue: string | number | boolean | null | string[] | number[] =
+            compareVariableIndeces?.[conditionIndex] !== null && compareVariableIndeces?.[conditionIndex] !== undefined
+                ? row[compareVariableIndeces[conditionIndex] as number]
+                : condition.value;
+        let conditionResult = false;
+
+        if (type === "string" && options?.caseInsensitive === true && value !== null && condValue !== null) {
+            value = (value as string).toLowerCase();
+            if (Array.isArray(condValue)) {
+                condValue = (condValue as string[]).map((item) => item.toLowerCase());
+            } else if (condition.operator !== "regex") {
+                condValue = (condValue as string).toLowerCase();
+            }
+        }
+
+        switch (condition.operator) {
+            case "eq":
+                return value === condValue;
+            case "ne":
+                return value !== condValue;
+            case "in":
+                return (condValue as Array<string | number>).includes(value as string | number);
+            case "notin":
+                return !(condValue as Array<string | number>).includes(value as string | number);
+            case "missing":
+                return value === null || value === "";
+            case "notMissing":
+                return value !== null && value !== "";
+            default:
+                break;
+        }
+
+        if (type === "string" && value !== null && condValue !== null) {
+            switch (condition.operator) {
+                case "starts":
+                    conditionResult = (value as string).startsWith(condValue as string);
+                    break;
+                case "ends":
+                    conditionResult = (value as string).endsWith(condValue as string);
+                    break;
+                case "contains":
+                    conditionResult = (value as string).includes(condValue as string);
+                    break;
+                case "notcontains":
+                    conditionResult = !(value as string).includes(condValue as string);
+                    break;
+                case "regex":
+                    conditionResult = new RegExp(condValue as string, options?.caseInsensitive ? "i" : "").test(value as string);
+                    break;
+                case "lt":
+                    conditionResult = value < condValue;
+                    break;
+                case "le":
+                    conditionResult = value <= condValue;
+                    break;
+                case "gt":
+                    conditionResult = value > condValue;
+                    break;
+                case "ge":
+                    conditionResult = value >= condValue;
+                    break;
+                default:
+                    throw new Error(`Unknown operator ${condition.operator} for type ${type}`);
+            }
+            return conditionResult;
+        }
+
+        if (type === "number" && value !== null && condValue !== null) {
+            switch (condition.operator) {
+                case "lt":
+                    conditionResult = value < condValue;
+                    break;
+                case "le":
+                    conditionResult = value <= condValue;
+                    break;
+                case "gt":
+                    conditionResult = value > condValue;
+                    break;
+                case "ge":
+                    conditionResult = value >= condValue;
+                    break;
+                default:
+                    throw new Error(`Unknown operator ${condition.operator} for type ${type}`);
+            }
+            return conditionResult;
+        }
+
+        throw new Error(`Unknown operator ${condition.operator} for type ${type}`);
+    };
+
+    private evaluateExpressionNode = (node: ExpressionNode, row: ItemDataArray): boolean => {
+        if (node.type === "condition") {
+            return this.evaluateCondition(node.conditionIndex, row);
+        }
+
+        const leftResult = this.evaluateExpressionNode(node.left, row);
+        if (node.connector === "and") {
+            return leftResult && this.evaluateExpressionNode(node.right, row);
+        }
+        if (node.connector === "or") {
+            return leftResult || this.evaluateExpressionNode(node.right, row);
+        }
+
+        throw new Error(`Unknown connector ${node.connector}`);
     };
 
     /**
@@ -161,120 +300,11 @@ class Filter {
      * @return True if the row passes the filter, false otherwise.
      */
     public filterRow = (row: ItemDataArray): boolean => {
-        const { conditions, variableIndeces, variableTypes, connectors, onlyAndConnectors, onlyOrConnectors, options } =
-            this.parsedFilter;
-        let result = false;
-        let lastConnector: Connector = "and";
-        for (let i = 0; i < conditions.length; i++) {
-            const condition = conditions[i];
-            let value = row[variableIndeces[i]];
-            let condValue = condition.value;
-            const type = variableTypes[variableIndeces[i]];
-            let conditionResult = false;
-            if (type === "string" && options?.caseInsensitive === true && value !== null && condValue !== null) {
-                value = (value as string).toLowerCase();
-                if (condition.operator !== "regex" && !["in", "notin"].includes(condition.operator)) {
-                    condValue = (condition.value as string).toLowerCase();
-                } else if (["in", "notin"].includes(condition.operator)) {
-                    condValue = (condition.value as string[]).map((item) => item.toLowerCase());
-                }
-            }
-            // Common operators
-            switch (condition.operator) {
-                case "eq":
-                    conditionResult = value === condValue;
-                    break;
-                case "ne":
-                    conditionResult = value !== condValue;
-                    break;
-                case "in":
-                    conditionResult = (condValue as unknown as (string | number)[]).includes(value as string | number);
-                    break;
-                case "notin":
-                    conditionResult = !(condValue as unknown as (string | number)[]).includes(value as string | number);
-                    break;
-                case "missing":
-                    conditionResult = (value === null || value === '');
-                    break;
-                case "notMissing":
-                    conditionResult = (value !== null && value !== '');
-                    break;
-                default:
-                    if (type === "string" && value !== null && condValue !== null) {
-                        switch (condition.operator) {
-                            case "starts":
-                                conditionResult = (value as string).startsWith(condValue as string);
-                                break;
-                            case "ends":
-                                conditionResult = (value as string).endsWith(condValue as string);
-                                break;
-                            case "contains":
-                                conditionResult = (value as string).includes(condValue as string);
-                                break;
-                            case "notcontains":
-                                conditionResult = !(value as string).includes(condValue as string);
-                                break;
-                            case "regex":
-                                conditionResult = new RegExp(condValue as string, options?.caseInsensitive ? "i" : "").test(
-                                    value as string
-                                );
-                                break;
-                            case "lt":
-                                conditionResult = value < condValue;
-                                break;
-                            case "le":
-                                conditionResult = value <= condValue;
-                                break;
-                            case "gt":
-                                conditionResult = value > condValue;
-                                break;
-                            case "ge":
-                                conditionResult = value >= condValue;
-                                break;
-                            default:
-                                throw new Error(`Unknown operator ${condition.operator}`);
-                        }
-                    } else if (type === "number" && value !== null && condValue !== null) {
-                        switch (condition.operator) {
-                            case "lt":
-                                conditionResult = value < condValue;
-                                break;
-                            case "le":
-                                conditionResult = value <= condValue;
-                                break;
-                            case "gt":
-                                conditionResult = value > condValue;
-                                break;
-                            case "ge":
-                                conditionResult = value >= condValue;
-                                break;
-                            default:
-                                throw new Error(`Unknown operator ${condition.operator}`);
-                        }
-                    }
-            }
-            if (i === 0) {
-                result = conditionResult;
-            } else {
-                if (lastConnector === "and") {
-                    result = result && conditionResult;
-                } else if (lastConnector === "or") {
-                    result = result || conditionResult;
-                } else {
-                    throw new Error(`Unknown connector ${lastConnector}`);
-                }
-            }
-            lastConnector = connectors[i];
-            if (onlyAndConnectors && result === false) {
-                // In case all connectors are "and" and the result is false, there is no need to check the rest of the conditions
-                break;
-            }
-            if (onlyOrConnectors && result === true) {
-                // The same for "or" with true result
-                break;
-            }
+        if (this.expressionTree === null) {
+            return true;
         }
-        return result;
+
+        return this.evaluateExpressionNode(this.expressionTree, row);
     };
 
     /**
@@ -284,7 +314,7 @@ class Filter {
      */
     public filterDataframe = (data: ItemDataArray[]): ItemDataArray[] => {
         return data.filter((row) => this.filterRow(row));
-    }
+    };
 
     /**
      * Validate filter string
@@ -292,11 +322,7 @@ class Filter {
      * @returns True if the filter string is valid, false otherwise.
      */
     public validateFilterString = (filterString: string): boolean => {
-        try {
-            return validateFilterString(filterString, this.parsedColumns, this.caseInsensitiveColNames);
-        } catch (error) {
-            return false;
-        }
+        return validateFilterString(filterString, this.parsedColumns, this.caseInsensitiveColNames);
     };
 
     /**
@@ -308,6 +334,7 @@ class Filter {
         return {
             conditions: this.parsedFilter.conditions,
             connectors: this.parsedFilter.connectors,
+            connectorPriorities: this.parsedFilter.connectorPriorities,
             options: this.parsedFilter.options,
         };
     };

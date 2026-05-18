@@ -357,4 +357,60 @@ describe("filterToString", () => {
         const expectedString = 'name in ("John", "Doe")';
         expect(new Filter("dataset-json1.1", columns, filter).toString()).toBe(expectedString);
     });
+
+    it("should serialize compareVariable conditions", () => {
+        const filter: BasicFilter = {
+            conditions: [{ variable: "name", operator: "eq", value: null, compareVariable: "alias" }],
+            connectors: [],
+        };
+        const columns: ColumnMetadataDatasetJson[] = [
+            { name: "name", dataType: "string" },
+            { name: "alias", dataType: "string" },
+        ];
+
+        expect(new Filter("dataset-json1.1", columns, filter).toString()).toBe("name = alias");
+    });
+
+    it("should serialize connectorPriorities with parenthesis", () => {
+        const filter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: "John" },
+                { variable: "age", operator: "gt", value: 30 },
+                { variable: "score", operator: "gt", value: 90 },
+            ],
+            connectors: ["and", "or"],
+            connectorPriorities: [0, 1],
+        };
+        const columns: ColumnMetadataDatasetJson[] = [
+            { name: "name", dataType: "string" },
+            { name: "age", dataType: "integer" },
+            { name: "score", dataType: "integer" },
+        ];
+
+        expect(new Filter("dataset-json1.1", columns, filter).toString()).toBe('name = "John" and (age > 30 or score > 90)');
+    });
+
+    it("should serialize nested parenthesis with in lists and compareVariable", () => {
+        const filter: BasicFilter = {
+            conditions: [
+                { variable: "age", operator: "gt", value: 50 },
+                { variable: "age", operator: "in", value: [20, 30, 40] },
+                { variable: "trt01p", operator: "ne", value: null, compareVariable: "trt01a" },
+                { variable: "name", operator: "in", value: ["John", "Dave"] },
+                { variable: "trt01p", operator: "eq", value: "Placebo" },
+            ],
+            connectors: ["or", "or", "and", "or"],
+            connectorPriorities: [1, 1, 0, 1],
+        };
+        const columns: ColumnMetadataDatasetJson[] = [
+            { name: "age", dataType: "integer" },
+            { name: "trt01p", dataType: "string" },
+            { name: "trt01a", dataType: "string" },
+            { name: "name", dataType: "string" },
+        ];
+
+        expect(new Filter("dataset-json1.1", columns, filter).toString()).toBe(
+            '(age > 50 or age in (20, 30, 40) or trt01p != trt01a) and (name in ("John", "Dave") or trt01p = "Placebo")',
+        );
+    });
 });
