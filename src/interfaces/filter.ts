@@ -66,6 +66,18 @@ export interface ParsedFilter extends BasicFilter {
     variableIndeces: number[];
     compareVariableIndeces?: (number | null)[];
     variableTypes: string[];
-    onlyAndConnectors: boolean;
-    onlyOrConnectors: boolean;
 }
+
+export type ExpressionNode =
+    | {
+          type: "condition";
+          condition: FilterCondition;
+          conditionIndex: number;
+      }
+    | {
+          type: "connector";
+          connector: Connector;
+          priority: number;
+          left: ExpressionNode;
+          right: ExpressionNode;
+      };

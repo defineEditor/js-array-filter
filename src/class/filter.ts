@@ -6,11 +6,10 @@ import {
     ColumnMetadata,
     ColumnMetadataParsed,
     ItemTypeParsed,
+    ExpressionNode,
 } from "../interfaces/filter";
-import filterToString from "../utils/filterToString";
-import { buildExpressionTree, ExpressionNode } from "../utils/filterExpression";
+import { buildExpressionTree, filterExpressionToString, parseFilterString } from "../utils/filterExpression";
 import stringToFilter from "../utils/stringToFilter";
-import validateFilterString from "../utils/validateFilterString";
 
 class Filter {
     private parsedFilter: ParsedFilter;
@@ -167,17 +166,12 @@ class Filter {
               })
             : undefined;
 
-        const onlyAndConnectors = filter.connectors.every((connector) => connector === "and");
-        const onlyOrConnectors = filter.connectors.every((connector) => connector === "or");
-
         const variableTypes: ItemTypeParsed[] = columns.map((column) => column.dataType);
 
         return {
             ...filter,
             variableIndeces,
             compareVariableIndeces,
-            onlyAndConnectors,
-            onlyOrConnectors,
             variableTypes,
         };
     };
@@ -322,7 +316,12 @@ class Filter {
      * @returns True if the filter string is valid, false otherwise.
      */
     public validateFilterString = (filterString: string): boolean => {
-        return validateFilterString(filterString, this.parsedColumns, this.caseInsensitiveColNames);
+        try {
+            parseFilterString(filterString, this.parsedColumns, this.caseInsensitiveColNames);
+            return true;
+        } catch (error) {
+            return false;
+        }
     };
 
     /**
@@ -345,7 +344,7 @@ class Filter {
      * @returns Filter string.
      */
     public toString = (filter?: BasicFilter): string => {
-        return filterToString(filter !== undefined ? filter : this.parsedFilter);
+        return filterExpressionToString(filter !== undefined ? filter : this.parsedFilter).trim();
     };
 }
 
