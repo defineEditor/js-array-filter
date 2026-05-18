@@ -111,7 +111,7 @@ const benchmarkCases = [
                 { variable: "isActive", operator: "ne", value: true },
             ],
             connectors: ["and", "and", "or", "and", "or"],
-            connectorsPriority: [1, 1, 0, 1, 2],
+            connectorPriorities: [1, 1, 0, 1, 2],
         },
         rows: [
             [55, "John", "Placebo", true],

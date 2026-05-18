@@ -961,3 +961,39 @@ test("Filter with unknown connector should throw an error", async () => {
     });
     expect(() => filter.filterDataframe(data)).toThrow("Unknown connector orMaybe");
 });
+
+test("Filter with multiple priorities evaluates correctly", async () => {
+    const filter = new Filter(
+        "parsed",
+        [
+            { name: "age", dataType: "number" },
+            { name: "name", dataType: "string" },
+            { name: "trt01p", dataType: "string" },
+            { name: "isActive", dataType: "boolean" },
+        ],
+        {
+            conditions: [
+                { variable: "age", operator: "gt", value: 50 },
+                { variable: "name", operator: "in", value: ["John", "Dave"] },
+                { variable: "trt01p", operator: "eq", value: "Placebo" },
+                { variable: "age", operator: "gt", value: 30 },
+                { variable: "name", operator: "notin", value: ["John", "Dave"] },
+                { variable: "isActive", operator: "ne", value: true },
+            ],
+            connectors: ["and", "and", "or", "and", "or"],
+            connectorPriorities: [1, 1, 0, 1, 2],
+        },
+    );
+
+    const rows = [
+        [55, "John", "Placebo", true],
+        [42, "Alice", "Drug", false],
+        [45, "Dave", "Placebo", false],
+        [25, "Kate", "Placebo", true],
+    ];
+
+    expect(filter.filterRow(rows[0])).toBe(true);
+    expect(filter.filterRow(rows[1])).toBe(true);
+    expect(filter.filterRow(rows[2])).toBe(true);
+    expect(filter.filterRow(rows[3])).toBe(false);
+});
