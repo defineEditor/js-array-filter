@@ -7,13 +7,17 @@ import {
     ColumnMetadataParsed,
     ItemTypeParsed,
     ExpressionNode,
+    FilterCondition,
 } from "../interfaces/filter";
 import { buildExpressionTree, filterExpressionToString, parseFilterString } from "../utils/filterExpression";
 import stringToFilter from "../utils/stringToFilter";
 
+type RowEvaluator = (row: ItemDataArray) => boolean;
+
 class Filter {
     private parsedFilter: ParsedFilter;
     private expressionTree: ExpressionNode | null;
+    private rowEvaluator: RowEvaluator;
     private parsedColumns: ColumnMetadataParsed[];
     private dataTypeFormat: "dataset-json1.1" | "xpt" | "parsed";
     private caseInsensitiveColNames: boolean;
@@ -43,6 +47,7 @@ class Filter {
             this.parsedFilter = this.parse(filter, this.parsedColumns);
         }
         this.expressionTree = buildExpressionTree(this.parsedFilter);
+        this.rowEvaluator = this.buildRowEvaluator();
     }
 
     /**
@@ -72,6 +77,7 @@ class Filter {
             this.parsedFilter = this.parse(filter, parsedColumns);
         }
         this.expressionTree = buildExpressionTree(this.parsedFilter);
+        this.rowEvaluator = this.buildRowEvaluator();
     };
 
     /**
@@ -176,116 +182,432 @@ class Filter {
         };
     };
 
-    private evaluateCondition = (conditionIndex: number, row: ItemDataArray): boolean => {
+    private buildStringConditionEvaluator = (
+        condition: FilterCondition,
+        variableIndex: number,
+        compareVariableIndex: number | null | undefined,
+        caseInsensitive: boolean,
+    ): RowEvaluator => {
+        const hasCompareVariable = compareVariableIndex !== null && compareVariableIndex !== undefined;
+        const operator = condition.operator;
+
+        if (operator === "missing") {
+            return (row) => row[variableIndex] === null || row[variableIndex] === "";
+        }
+
+        if (operator === "notMissing") {
+            return (row) => row[variableIndex] !== null && row[variableIndex] !== "";
+        }
+
+        if (!hasCompareVariable) {
+            if (operator === "regex") {
+                const regex = new RegExp(condition.value as string, caseInsensitive ? "i" : "");
+                return (row) => {
+                    const value = row[variableIndex];
+                    return value !== null && regex.test(value as string);
+                };
+            }
+
+            if (operator === "in" || operator === "notin") {
+                const values = caseInsensitive
+                    ? (condition.value as string[]).map((item) => item.toLowerCase())
+                    : (condition.value as string[]);
+                return (row) => {
+                    const value = row[variableIndex];
+                    if (value === null) {
+                        return operator === "notin";
+                    }
+                    const contains = values.includes(caseInsensitive ? (value as string).toLowerCase() : (value as string));
+                    return operator === "in" ? contains : !contains;
+                };
+            }
+
+            const constantValue =
+                typeof condition.value === "string" && caseInsensitive ? condition.value.toLowerCase() : condition.value;
+
+            switch (operator) {
+                case "eq":
+                    return (row) => {
+                        const value = row[variableIndex];
+                        return caseInsensitive && value !== null && constantValue !== null
+                            ? (value as string).toLowerCase() === constantValue
+                            : value === condition.value;
+                    };
+                case "ne":
+                    return (row) => {
+                        const value = row[variableIndex];
+                        return caseInsensitive && value !== null && constantValue !== null
+                            ? (value as string).toLowerCase() !== constantValue
+                            : value !== condition.value;
+                    };
+                case "starts":
+                    return (row) => {
+                        const value = row[variableIndex];
+                        if (value === null || constantValue === null) {
+                            return false;
+                        }
+                        return (caseInsensitive ? (value as string).toLowerCase() : (value as string)).startsWith(
+                            constantValue as string,
+                        );
+                    };
+                case "ends":
+                    return (row) => {
+                        const value = row[variableIndex];
+                        if (value === null || constantValue === null) {
+                            return false;
+                        }
+                        return (caseInsensitive ? (value as string).toLowerCase() : (value as string)).endsWith(
+                            constantValue as string,
+                        );
+                    };
+                case "contains":
+                    return (row) => {
+                        const value = row[variableIndex];
+                        if (value === null || constantValue === null) {
+                            return false;
+                        }
+                        return (caseInsensitive ? (value as string).toLowerCase() : (value as string)).includes(
+                            constantValue as string,
+                        );
+                    };
+                case "notcontains":
+                    return (row) => {
+                        const value = row[variableIndex];
+                        if (value === null || constantValue === null) {
+                            return false;
+                        }
+                        return !(caseInsensitive ? (value as string).toLowerCase() : (value as string)).includes(
+                            constantValue as string,
+                        );
+                    };
+                case "lt":
+                    return (row) => {
+                        const value = row[variableIndex];
+                        if (value === null || constantValue === null) {
+                            return false;
+                        }
+                        return (caseInsensitive ? (value as string).toLowerCase() : (value as string)) < (constantValue as string);
+                    };
+                case "le":
+                    return (row) => {
+                        const value = row[variableIndex];
+                        if (value === null || constantValue === null) {
+                            return false;
+                        }
+                        return (caseInsensitive ? (value as string).toLowerCase() : (value as string)) <= (constantValue as string);
+                    };
+                case "gt":
+                    return (row) => {
+                        const value = row[variableIndex];
+                        if (value === null || constantValue === null) {
+                            return false;
+                        }
+                        return (caseInsensitive ? (value as string).toLowerCase() : (value as string)) > (constantValue as string);
+                    };
+                case "ge":
+                    return (row) => {
+                        const value = row[variableIndex];
+                        if (value === null || constantValue === null) {
+                            return false;
+                        }
+                        return (caseInsensitive ? (value as string).toLowerCase() : (value as string)) >= (constantValue as string);
+                    };
+                default:
+                    return () => {
+                        throw new Error(`Unknown operator ${condition.operator} for type string`);
+                    };
+            }
+        }
+
+        switch (operator) {
+            case "eq":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    if (caseInsensitive && value !== null && compareValue !== null) {
+                        return (value as string).toLowerCase() === (compareValue as string).toLowerCase();
+                    }
+                    return value === compareValue;
+                };
+            case "ne":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    if (caseInsensitive && value !== null && compareValue !== null) {
+                        return (value as string).toLowerCase() !== (compareValue as string).toLowerCase();
+                    }
+                    return value !== compareValue;
+                };
+            case "starts":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    if (value === null || compareValue === null) {
+                        return false;
+                    }
+                    const normalizedValue = caseInsensitive ? (value as string).toLowerCase() : (value as string);
+                    const normalizedCompareValue = caseInsensitive ? (compareValue as string).toLowerCase() : (compareValue as string);
+                    return normalizedValue.startsWith(normalizedCompareValue);
+                };
+            case "ends":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    if (value === null || compareValue === null) {
+                        return false;
+                    }
+                    const normalizedValue = caseInsensitive ? (value as string).toLowerCase() : (value as string);
+                    const normalizedCompareValue = caseInsensitive ? (compareValue as string).toLowerCase() : (compareValue as string);
+                    return normalizedValue.endsWith(normalizedCompareValue);
+                };
+            case "contains":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    if (value === null || compareValue === null) {
+                        return false;
+                    }
+                    const normalizedValue = caseInsensitive ? (value as string).toLowerCase() : (value as string);
+                    const normalizedCompareValue = caseInsensitive ? (compareValue as string).toLowerCase() : (compareValue as string);
+                    return normalizedValue.includes(normalizedCompareValue);
+                };
+            case "notcontains":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    if (value === null || compareValue === null) {
+                        return false;
+                    }
+                    const normalizedValue = caseInsensitive ? (value as string).toLowerCase() : (value as string);
+                    const normalizedCompareValue = caseInsensitive ? (compareValue as string).toLowerCase() : (compareValue as string);
+                    return !normalizedValue.includes(normalizedCompareValue);
+                };
+            case "regex":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    if (value === null || compareValue === null) {
+                        return false;
+                    }
+                    return new RegExp(compareValue as string, caseInsensitive ? "i" : "").test(value as string);
+                };
+            case "lt":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    if (value === null || compareValue === null) {
+                        return false;
+                    }
+                    const normalizedValue = caseInsensitive ? (value as string).toLowerCase() : (value as string);
+                    const normalizedCompareValue = caseInsensitive ? (compareValue as string).toLowerCase() : (compareValue as string);
+                    return normalizedValue < normalizedCompareValue;
+                };
+            case "le":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    if (value === null || compareValue === null) {
+                        return false;
+                    }
+                    const normalizedValue = caseInsensitive ? (value as string).toLowerCase() : (value as string);
+                    const normalizedCompareValue = caseInsensitive ? (compareValue as string).toLowerCase() : (compareValue as string);
+                    return normalizedValue <= normalizedCompareValue;
+                };
+            case "gt":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    if (value === null || compareValue === null) {
+                        return false;
+                    }
+                    const normalizedValue = caseInsensitive ? (value as string).toLowerCase() : (value as string);
+                    const normalizedCompareValue = caseInsensitive ? (compareValue as string).toLowerCase() : (compareValue as string);
+                    return normalizedValue > normalizedCompareValue;
+                };
+            case "ge":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    if (value === null || compareValue === null) {
+                        return false;
+                    }
+                    const normalizedValue = caseInsensitive ? (value as string).toLowerCase() : (value as string);
+                    const normalizedCompareValue = caseInsensitive ? (compareValue as string).toLowerCase() : (compareValue as string);
+                    return normalizedValue >= normalizedCompareValue;
+                };
+            default:
+                return () => {
+                    throw new Error(`Unknown operator ${condition.operator} for type string`);
+                };
+        }
+    };
+
+    private buildNumberConditionEvaluator = (
+        condition: FilterCondition,
+        variableIndex: number,
+        compareVariableIndex: number | null | undefined,
+    ): RowEvaluator => {
+        const hasCompareVariable = compareVariableIndex !== null && compareVariableIndex !== undefined;
+        const operator = condition.operator;
+
+        if (operator === "missing") {
+            return (row) => row[variableIndex] === null || row[variableIndex] === "";
+        }
+
+        if (operator === "notMissing") {
+            return (row) => row[variableIndex] !== null && row[variableIndex] !== "";
+        }
+
+        if (operator === "in" || operator === "notin") {
+            const values = condition.value as number[];
+            return (row) => {
+                const value = row[variableIndex];
+                const contains = values.includes(value as number);
+                return operator === "in" ? contains : !contains;
+            };
+        }
+
+        if (!hasCompareVariable) {
+            const constantValue = condition.value as number | null;
+            switch (operator) {
+                case "eq":
+                    return (row) => row[variableIndex] === constantValue;
+                case "ne":
+                    return (row) => row[variableIndex] !== constantValue;
+                case "lt":
+                    return (row) =>
+                        row[variableIndex] !== null && constantValue !== null && (row[variableIndex] as number) < constantValue;
+                case "le":
+                    return (row) =>
+                        row[variableIndex] !== null && constantValue !== null && (row[variableIndex] as number) <= constantValue;
+                case "gt":
+                    return (row) =>
+                        row[variableIndex] !== null && constantValue !== null && (row[variableIndex] as number) > constantValue;
+                case "ge":
+                    return (row) =>
+                        row[variableIndex] !== null && constantValue !== null && (row[variableIndex] as number) >= constantValue;
+                default:
+                    return () => {
+                        throw new Error(`Unknown operator ${condition.operator} for type number`);
+                    };
+            }
+        }
+
+        switch (operator) {
+            case "eq":
+                return (row) => row[variableIndex] === row[compareVariableIndex];
+            case "ne":
+                return (row) => row[variableIndex] !== row[compareVariableIndex];
+            case "lt":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    return value !== null && compareValue !== null && (value as number) < (compareValue as number);
+                };
+            case "le":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    return value !== null && compareValue !== null && (value as number) <= (compareValue as number);
+                };
+            case "gt":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    return value !== null && compareValue !== null && (value as number) > (compareValue as number);
+                };
+            case "ge":
+                return (row) => {
+                    const value = row[variableIndex];
+                    const compareValue = row[compareVariableIndex];
+                    return value !== null && compareValue !== null && (value as number) >= (compareValue as number);
+                };
+            default:
+                return () => {
+                    throw new Error(`Unknown operator ${condition.operator} for type number`);
+                };
+        }
+    };
+
+    private buildBooleanConditionEvaluator = (
+        condition: FilterCondition,
+        variableIndex: number,
+        compareVariableIndex: number | null | undefined,
+    ): RowEvaluator => {
+        const hasCompareVariable = compareVariableIndex !== null && compareVariableIndex !== undefined;
+        const operator = condition.operator;
+
+        switch (operator) {
+            case "missing":
+                return (row) => row[variableIndex] === null || row[variableIndex] === "";
+            case "notMissing":
+                return (row) => row[variableIndex] !== null && row[variableIndex] !== "";
+            case "eq":
+                return hasCompareVariable
+                    ? (row) => row[variableIndex] === row[compareVariableIndex]
+                    : (row) => row[variableIndex] === condition.value;
+            case "ne":
+                return hasCompareVariable
+                    ? (row) => row[variableIndex] !== row[compareVariableIndex]
+                    : (row) => row[variableIndex] !== condition.value;
+            default:
+                return () => {
+                    throw new Error(`Unknown operator ${condition.operator} for type boolean`);
+                };
+        }
+    };
+
+    private buildConditionEvaluator = (conditionIndex: number): RowEvaluator => {
         const { conditions, compareVariableIndeces, options, variableIndeces, variableTypes } = this.parsedFilter;
         const condition = conditions[conditionIndex];
         const variableIndex = variableIndeces[conditionIndex];
+        const compareVariableIndex = compareVariableIndeces?.[conditionIndex];
         const type = variableTypes[variableIndex];
-        let value = row[variableIndex];
-        let condValue: string | number | boolean | null | string[] | number[] =
-            compareVariableIndeces?.[conditionIndex] !== null && compareVariableIndeces?.[conditionIndex] !== undefined
-                ? row[compareVariableIndeces[conditionIndex] as number]
-                : condition.value;
-        let conditionResult = false;
 
-        if (type === "string" && options?.caseInsensitive === true && value !== null && condValue !== null) {
-            value = (value as string).toLowerCase();
-            if (Array.isArray(condValue)) {
-                condValue = (condValue as string[]).map((item) => item.toLowerCase());
-            } else if (condition.operator !== "regex") {
-                condValue = (condValue as string).toLowerCase();
-            }
+        if (type === "string") {
+            return this.buildStringConditionEvaluator(
+                condition,
+                variableIndex,
+                compareVariableIndex,
+                options?.caseInsensitive === true,
+            );
         }
 
-        switch (condition.operator) {
-            case "eq":
-                return value === condValue;
-            case "ne":
-                return value !== condValue;
-            case "in":
-                return (condValue as Array<string | number>).includes(value as string | number);
-            case "notin":
-                return !(condValue as Array<string | number>).includes(value as string | number);
-            case "missing":
-                return value === null || value === "";
-            case "notMissing":
-                return value !== null && value !== "";
-            default:
-                break;
+        if (type === "number") {
+            return this.buildNumberConditionEvaluator(condition, variableIndex, compareVariableIndex);
         }
 
-        if (type === "string" && value !== null && condValue !== null) {
-            switch (condition.operator) {
-                case "starts":
-                    conditionResult = (value as string).startsWith(condValue as string);
-                    break;
-                case "ends":
-                    conditionResult = (value as string).endsWith(condValue as string);
-                    break;
-                case "contains":
-                    conditionResult = (value as string).includes(condValue as string);
-                    break;
-                case "notcontains":
-                    conditionResult = !(value as string).includes(condValue as string);
-                    break;
-                case "regex":
-                    conditionResult = new RegExp(condValue as string, options?.caseInsensitive ? "i" : "").test(value as string);
-                    break;
-                case "lt":
-                    conditionResult = value < condValue;
-                    break;
-                case "le":
-                    conditionResult = value <= condValue;
-                    break;
-                case "gt":
-                    conditionResult = value > condValue;
-                    break;
-                case "ge":
-                    conditionResult = value >= condValue;
-                    break;
-                default:
-                    throw new Error(`Unknown operator ${condition.operator} for type ${type}`);
-            }
-            return conditionResult;
-        }
-
-        if (type === "number" && value !== null && condValue !== null) {
-            switch (condition.operator) {
-                case "lt":
-                    conditionResult = value < condValue;
-                    break;
-                case "le":
-                    conditionResult = value <= condValue;
-                    break;
-                case "gt":
-                    conditionResult = value > condValue;
-                    break;
-                case "ge":
-                    conditionResult = value >= condValue;
-                    break;
-                default:
-                    throw new Error(`Unknown operator ${condition.operator} for type ${type}`);
-            }
-            return conditionResult;
-        }
-
-        throw new Error(`Unknown operator ${condition.operator} for type ${type}`);
+        return this.buildBooleanConditionEvaluator(condition, variableIndex, compareVariableIndex);
     };
 
-    private evaluateExpressionNode = (node: ExpressionNode, row: ItemDataArray): boolean => {
+    private buildExpressionEvaluator = (node: ExpressionNode, conditionEvaluators: RowEvaluator[]): RowEvaluator => {
         if (node.type === "condition") {
-            return this.evaluateCondition(node.conditionIndex, row);
+            return conditionEvaluators[node.conditionIndex];
         }
 
-        const leftResult = this.evaluateExpressionNode(node.left, row);
+        const leftEvaluator = this.buildExpressionEvaluator(node.left, conditionEvaluators);
+        const rightEvaluator = this.buildExpressionEvaluator(node.right, conditionEvaluators);
         if (node.connector === "and") {
-            return leftResult && this.evaluateExpressionNode(node.right, row);
+            return (row) => leftEvaluator(row) && rightEvaluator(row);
         }
         if (node.connector === "or") {
-            return leftResult || this.evaluateExpressionNode(node.right, row);
+            return (row) => leftEvaluator(row) || rightEvaluator(row);
         }
 
-        throw new Error(`Unknown connector ${node.connector}`);
+        return () => {
+            throw new Error(`Unknown connector ${node.connector}`);
+        };
+    };
+
+    private buildRowEvaluator = (): RowEvaluator => {
+        if (this.expressionTree === null) {
+            return () => true;
+        }
+
+        const conditionEvaluators = this.parsedFilter.conditions.map((_, conditionIndex) =>
+            this.buildConditionEvaluator(conditionIndex),
+        );
+        return this.buildExpressionEvaluator(this.expressionTree, conditionEvaluators);
     };
 
     /**
@@ -294,11 +616,7 @@ class Filter {
      * @return True if the row passes the filter, false otherwise.
      */
     public filterRow = (row: ItemDataArray): boolean => {
-        if (this.expressionTree === null) {
-            return true;
-        }
-
-        return this.evaluateExpressionNode(this.expressionTree, row);
+        return this.rowEvaluator(row);
     };
 
     /**

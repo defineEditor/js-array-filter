@@ -99,6 +99,26 @@ const benchmarkCases = [
             [45, "Dave", "Placebo", false],
         ],
     },
+    {
+        name: "conditions priority",
+        filter: {
+            conditions: [
+                { variable: "age", operator: "gt", value: 50 },
+                { variable: "name", operator: "in", value: ["John", "Dave"] },
+                { variable: "trt01p", operator: "eq", value: "Placebo" },
+                { variable: "age", operator: "gt", value: 30 },
+                { variable: "name", operator: "notin", value: ["John", "Dave"] },
+                { variable: "isActive", operator: "ne", value: true },
+            ],
+            connectors: ["and", "and", "or", "and", "or"],
+            connectorsPriority: [1, 1, 0, 1, 2],
+        },
+        rows: [
+            [55, "John", "Placebo", true],
+            [42, "Alice", "Drug", false],
+            [45, "Dave", "Placebo", false],
+        ],
+    },
 ];
 
 const runCase = ({ name, filter, rows }) => {

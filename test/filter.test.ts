@@ -670,6 +670,287 @@ test("Filter throws for unsupported boolean comparison operators", async () => {
     expect(() => filter.filterRow([true])).toThrow("Unknown operator gt for type boolean");
 });
 
+test("Filter handles string missing and null string operator guards", async () => {
+    expect(
+        new Filter("parsed", [{ name: "value", dataType: "string" }], {
+            conditions: [{ variable: "value", operator: "missing", value: null, isFunction: true }],
+            connectors: [],
+        }).filterRow([null]),
+    ).toBe(true);
+    expect(
+        new Filter("parsed", [{ name: "value", dataType: "string" }], {
+            conditions: [{ variable: "value", operator: "missing", value: null, isFunction: true }],
+            connectors: [],
+        }).filterRow([""]),
+    ).toBe(true);
+
+    expect(
+        new Filter("parsed", [{ name: "value", dataType: "string" }], {
+            conditions: [{ variable: "value", operator: "in", value: ["A"] }],
+            connectors: [],
+        }).filterRow([null]),
+    ).toBe(false);
+
+    expect(
+        new Filter("parsed", [{ name: "value", dataType: "string" }], {
+            conditions: [{ variable: "value", operator: "notin", value: ["A"] }],
+            connectors: [],
+        }).filterRow([null]),
+    ).toBe(true);
+
+    const nullGuardOperators = ["starts", "ends", "contains", "notcontains", "lt", "le", "gt", "ge"] as const;
+    nullGuardOperators.forEach((operator) => {
+        const filter = new Filter("parsed", [{ name: "value", dataType: "string" }], {
+            conditions: [{ variable: "value", operator, value: "A" }],
+            connectors: [],
+        });
+        expect(filter.filterRow([null])).toBe(false);
+    });
+});
+
+test("Filter handles case-insensitive string operators with constant values", async () => {
+    const operatorRows: Array<{ operator: StringOperator; row: [string]; value: string }> = [
+        { operator: "starts", row: ["Alphabet"], value: "alpha" },
+        { operator: "ends", row: ["Alphabet"], value: "BET" },
+        { operator: "contains", row: ["Alphabet"], value: "PHA" },
+        { operator: "notcontains", row: ["Alphabet"], value: "ZZZ" },
+        { operator: "lt", row: ["alpha"], value: "BETA" },
+        { operator: "le", row: ["alpha"], value: "ALPHA" },
+        { operator: "gt", row: ["beta"], value: "ALPHA" },
+        { operator: "ge", row: ["beta"], value: "BETA" },
+    ];
+
+    operatorRows.forEach(({ operator, row, value }) => {
+        const filter = new Filter("parsed", [{ name: "value", dataType: "string" }], {
+            conditions: [{ variable: "value", operator, value }],
+            connectors: [],
+            options: { caseInsensitive: true },
+        });
+        expect(filter.filterRow(row)).toBe(true);
+    });
+});
+
+test("Filter handles case-insensitive string equality and inequality constants", async () => {
+    const eqFilter = new Filter("parsed", [{ name: "value", dataType: "string" }], {
+        conditions: [{ variable: "value", operator: "eq", value: "Alpha" }],
+        connectors: [],
+        options: { caseInsensitive: true },
+    });
+    const neFilter = new Filter("parsed", [{ name: "value", dataType: "string" }], {
+        conditions: [{ variable: "value", operator: "ne", value: "Alpha" }],
+        connectors: [],
+        options: { caseInsensitive: true },
+    });
+
+    expect(eqFilter.filterRow(["alpha"])).toBe(true);
+    expect(neFilter.filterRow(["beta"])).toBe(true);
+});
+
+test("Filter handles string compareVariable evaluators", async () => {
+    const columns = [
+        { name: "left", dataType: "string" },
+        { name: "right", dataType: "string" },
+    ] as const;
+
+    expect(
+        new Filter("parsed", columns as any, {
+            conditions: [{ variable: "left", operator: "eq", value: null, compareVariable: "right" }],
+            connectors: [],
+        }).filterRow(["Alpha", "Alpha"]),
+    ).toBe(true);
+
+    expect(
+        new Filter("parsed", columns as any, {
+            conditions: [{ variable: "left", operator: "ne", value: null, compareVariable: "right" }],
+            connectors: [],
+            options: { caseInsensitive: true },
+        }).filterRow(["Alpha", "beta"]),
+    ).toBe(true);
+    expect(
+        new Filter("parsed", columns as any, {
+            conditions: [{ variable: "left", operator: "regex", value: null, compareVariable: "right" }],
+            connectors: [],
+            options: { caseInsensitive: true },
+        }).filterRow(["Alphabet", "^alpha"]),
+    ).toBe(true);
+
+    const positiveCases: Array<{ operator: StringOperator; row: [string, string] }> = [
+        { operator: "starts", row: ["Alphabet", "Alpha"] },
+        { operator: "ends", row: ["Alphabet", "bet"] },
+        { operator: "contains", row: ["Alphabet", "pha"] },
+        { operator: "notcontains", row: ["Alphabet", "zzz"] },
+        { operator: "regex", row: ["Alphabet", "^Alpha"] },
+        { operator: "lt", row: ["Alpha", "Beta"] },
+        { operator: "le", row: ["Alpha", "Alpha"] },
+        { operator: "gt", row: ["Beta", "Alpha"] },
+        { operator: "ge", row: ["Beta", "Beta"] },
+    ];
+
+    positiveCases.forEach(({ operator, row }) => {
+        const filter = new Filter("parsed", columns as any, {
+            conditions: [{ variable: "left", operator, value: null, compareVariable: "right" }],
+            connectors: [],
+        });
+        expect(filter.filterRow(row)).toBe(true);
+    });
+
+    const caseInsensitivePositiveCases: Array<{ operator: StringOperator; row: [string, string] }> = [
+        { operator: "starts", row: ["Alphabet", "alpha"] },
+        { operator: "ends", row: ["Alphabet", "BET"] },
+        { operator: "contains", row: ["Alphabet", "PHA"] },
+        { operator: "notcontains", row: ["Alphabet", "ZZZ"] },
+        { operator: "lt", row: ["alpha", "BETA"] },
+        { operator: "le", row: ["alpha", "ALPHA"] },
+        { operator: "gt", row: ["beta", "ALPHA"] },
+        { operator: "ge", row: ["beta", "BETA"] },
+    ];
+
+    caseInsensitivePositiveCases.forEach(({ operator, row }) => {
+        const filter = new Filter("parsed", columns as any, {
+            conditions: [{ variable: "left", operator, value: null, compareVariable: "right" }],
+            connectors: [],
+            options: { caseInsensitive: true },
+        });
+        expect(filter.filterRow(row)).toBe(true);
+    });
+
+    const nullGuardOperators = ["starts", "ends", "contains", "notcontains", "regex", "lt", "le", "gt", "ge"] as const;
+    nullGuardOperators.forEach((operator) => {
+        const filter = new Filter("parsed", columns as any, {
+            conditions: [{ variable: "left", operator, value: null, compareVariable: "right" }],
+            connectors: [],
+        });
+        expect(filter.filterRow([null, "Alpha"] as any)).toBe(false);
+    });
+});
+
+test("Filter handles number constant and compareVariable evaluators", async () => {
+    expect(
+        new Filter("parsed", [{ name: "value", dataType: "number" }], {
+            conditions: [{ variable: "value", operator: "eq", value: 10 }],
+            connectors: [],
+        }).filterRow([10]),
+    ).toBe(true);
+    expect(
+        new Filter("parsed", [{ name: "value", dataType: "number" }], {
+            conditions: [{ variable: "value", operator: "ne", value: 10 }],
+            connectors: [],
+        }).filterRow([8]),
+    ).toBe(true);
+    expect(
+        new Filter("parsed", [{ name: "value", dataType: "number" }], {
+            conditions: [{ variable: "value", operator: "notin", value: [10, 20] }],
+            connectors: [],
+        }).filterRow([8]),
+    ).toBe(true);
+
+    const columns = [
+        { name: "left", dataType: "number" },
+        { name: "right", dataType: "number" },
+    ] as const;
+    const compareCases: Array<{ operator: StringOperator; row: [number | null, number | null]; expected: boolean }> = [
+        { operator: "eq", row: [5, 5], expected: true },
+        { operator: "ne", row: [5, 6], expected: true },
+        { operator: "lt", row: [4, 6], expected: true },
+        { operator: "le", row: [4, 4], expected: true },
+        { operator: "ge", row: [6, 6], expected: true },
+        { operator: "ge", row: [null, 6], expected: false },
+    ];
+
+    compareCases.forEach(({ operator, row, expected }) => {
+        const filter = new Filter("parsed", columns as any, {
+            conditions: [{ variable: "left", operator, value: null, compareVariable: "right" }],
+            connectors: [],
+        });
+        expect(filter.filterRow(row as any)).toBe(expected);
+    });
+});
+
+test("Filter handles boolean compareVariable and notMissing evaluators", async () => {
+    expect(
+        new Filter("dataset-json1.1", [{ name: "flag", dataType: "boolean" }], {
+            conditions: [{ variable: "flag", operator: "eq", value: true }],
+            connectors: [],
+        }).filterRow([true]),
+    ).toBe(true);
+
+    expect(
+        new Filter("parsed", [{ name: "flag", dataType: "boolean" }], {
+            conditions: [{ variable: "flag", operator: "missing", value: null, isFunction: true }],
+            connectors: [],
+        }).filterRow([null]),
+    ).toBe(true);
+    expect(
+        new Filter("parsed", [{ name: "flag", dataType: "boolean" }], {
+            conditions: [{ variable: "flag", operator: "missing", value: null, isFunction: true }],
+            connectors: [],
+        }).filterRow([""]),
+    ).toBe(true);
+    expect(
+        new Filter("parsed", [{ name: "flag", dataType: "boolean" }], {
+            conditions: [{ variable: "flag", operator: "notMissing", value: null, isFunction: true }],
+            connectors: [],
+        }).filterRow([true]),
+    ).toBe(true);
+
+    const columns = [
+        { name: "left", dataType: "boolean" },
+        { name: "right", dataType: "boolean" },
+    ] as const;
+    expect(
+        new Filter("parsed", columns as any, {
+            conditions: [{ variable: "left", operator: "eq", value: null, compareVariable: "right" }],
+            connectors: [],
+        }).filterRow([true, true]),
+    ).toBe(true);
+    expect(
+        new Filter("parsed", columns as any, {
+            conditions: [{ variable: "left", operator: "ne", value: null, compareVariable: "right" }],
+            connectors: [],
+        }).filterRow([true, false]),
+    ).toBe(true);
+    expect(
+        new Filter("parsed", [{ name: "flag", dataType: "boolean" }], {
+            conditions: [{ variable: "flag", operator: "ne", value: true }],
+            connectors: [],
+        }).filterRow([false]),
+    ).toBe(true);
+});
+
+test("Filter throws for unknown compareVariable operators", async () => {
+    expect(() =>
+        new Filter(
+            "parsed",
+            [
+                { name: "left", dataType: "string" },
+                { name: "right", dataType: "string" },
+            ],
+            {
+                conditions: [
+                    { variable: "left", operator: "unknownOperator" as StringOperator, value: null, compareVariable: "right" },
+                ],
+                connectors: [],
+            },
+        ).filterRow(["a", "b"]),
+    ).toThrow("Unknown operator unknownOperator for type string");
+
+    expect(() =>
+        new Filter(
+            "parsed",
+            [
+                { name: "left", dataType: "number" },
+                { name: "right", dataType: "number" },
+            ],
+            {
+                conditions: [
+                    { variable: "left", operator: "unknownOperator" as StringOperator, value: null, compareVariable: "right" },
+                ],
+                connectors: [],
+            },
+        ).filterRow([1, 2]),
+    ).toThrow("Unknown operator unknownOperator for type number");
+});
+
 test("Filter with unknown connector should throw an error", async () => {
     const filter = new Filter("dataset-json1.1", columns, {
         conditions: [
