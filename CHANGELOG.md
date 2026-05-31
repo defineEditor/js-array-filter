@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.0]
+### Bug
+- Adding ability to compare with variables.
+- Adding condition priority.
+
 ## [0.1.6]
 ### Bug
 - Proper handling of upcase connectors.

@@ -5,6 +5,8 @@
 * Define filters with multiple conditions and connectors
 * Apply filters to arrays of data
 * Support for various data types and operators
+* Compare with variables (e.g., `VAR1 = VAR2`).
+* Condition priority for complex expressions.
 
 ## Installation
 Install the library using npm:
@@ -92,6 +94,39 @@ console.log(filterString);
 ```TypeScript
 const isValid = filter.validateFilterString(filterString);
 console.log(isValid); // Output: true or false
+```
+
+### Comparing with a variable
+```TypeScript
+import Filter from 'js-array-filter';
+
+const columns = [
+    { name: 'AVAL', dataType: 'number' },
+    { name: 'BASE', dataType: 'number' }
+];
+
+// AVAL > BASE
+const filter = new Filter('parsed', columns, {
+    conditions: [
+        { variable: 'AVAL', operator: 'gt', value: null, compareVariable: 'BASE' },
+    ],
+    connectors: []
+});
+```
+
+### Condition priority
+```TypeScript
+
+// (AGE > 80 and SEX = "M") or (AGE > 60 and SEX = "F")
+const filter = new Filter('parsed', columns, {
+    conditions: [
+        { variable: 'AGE', operator: 'gt', value: 80 },
+        { variable: 'SEX', operator: 'eq', value: 'M' },
+        { variable: 'AGE', operator: 'gt', value: 60 },
+        { variable: 'SEX', operator: 'eq', value: 'F' }
+    ],
+    connectors: ['and', 'or', 'and'],
+    connectorPriorities: [1, 0, 1]});
 ```
 
 ## Operators

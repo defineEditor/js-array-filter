@@ -8,7 +8,19 @@ describe("validateFilterString", () => {
             dataType: "string",
         },
         {
+            name: "trt01p",
+            dataType: "string",
+        },
+        {
+            name: "trt01a",
+            dataType: "string",
+        },
+        {
             name: "age",
+            dataType: "number",
+        },
+        {
+            name: "score",
             dataType: "number",
         },
         {
@@ -66,6 +78,27 @@ describe("validateFilterString", () => {
 
     it("should return false for an incomplete filter string", () => {
         const filterString = "age eq";
+        expect(new Filter("parsed", columns, "").validateFilterString(filterString)).toBe(false);
+    });
+
+    it("should return true for a compareVariable filter string", () => {
+        const filterString = "score >= age";
+        expect(new Filter("parsed", columns, "").validateFilterString(filterString)).toBe(true);
+    });
+
+    it("should return true for a filter string with parenthesis", () => {
+        const filterString = 'name = "John" and (age > 30 or score > 90)';
+        expect(new Filter("parsed", columns, "").validateFilterString(filterString)).toBe(true);
+    });
+
+    it("should return true for nested parenthesis with in lists and compareVariable", () => {
+        const filterString =
+            '((age > 50 or age in (20,30,40) or trt01p != trt01a) and (name in ("John", "Dave") or trt01p = "Placebo"))';
+        expect(new Filter("parsed", columns, "").validateFilterString(filterString)).toBe(true);
+    });
+
+    it("should return false when compareVariable types do not match", () => {
+        const filterString = "name = age";
         expect(new Filter("parsed", columns, "").validateFilterString(filterString)).toBe(false);
     });
 });

@@ -1,6 +1,6 @@
 {
     "name": "js-array-filter",
-    "version": "0.1.6",
+    "version": "0.2.0",
     "description": "Apply filter to an array",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -10,6 +10,7 @@
     "scripts": {
         "test": "jest --coverage",
         "build": "rm -rf dist && tsc",
+        "benchmark": "npm run build && node scripts/benchmark.js",
         "release": "npm run test && npm run lint && npm run build && npm publish",
         "lint": "eslint . --ext .ts"
     },
