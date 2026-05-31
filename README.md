@@ -5,7 +5,7 @@
 * Define filters with multiple conditions and connectors
 * Apply filters to arrays of data
 * Support for various data types and operators
-* Compare with variables (e.g., `VAR1 eq VAR2`).
+* Compare with variables (e.g., `VAR1 = VAR2`).
 * Condition priority for complex expressions.
 
 ## Installation
@@ -126,7 +126,7 @@ const filter = new Filter('parsed', columns, {
         { variable: 'SEX', operator: 'eq', value: 'F' }
     ],
     connectors: ['and', 'or', 'and'],
-    connectorPriority: [1, 0, 1]});
+    connectorPriorities: [1, 0, 1]});
 ```
 
 ## Operators

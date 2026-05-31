@@ -648,12 +648,17 @@ class Filter {
      * @returns Filter object.
      */
     public toBasicFilter = (): BasicFilter => {
-        return {
+        const basicFilter: BasicFilter = {
             conditions: this.parsedFilter.conditions,
             connectors: this.parsedFilter.connectors,
-            connectorPriorities: this.parsedFilter.connectorPriorities,
-            options: this.parsedFilter.options,
         };
+        if (this.parsedFilter.connectorPriorities !== undefined) {
+            basicFilter.connectorPriorities = this.parsedFilter.connectorPriorities;
+        }
+        if (this.parsedFilter.options !== undefined) {
+            basicFilter.options = this.parsedFilter.options;
+        }
+        return basicFilter;
     };
 
     /**
