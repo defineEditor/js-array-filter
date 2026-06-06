@@ -101,4 +101,12 @@ describe("validateFilterString", () => {
         const filterString = "name = age";
         expect(new Filter("parsed", columns, "").validateFilterString(filterString)).toBe(false);
     });
+    it("should validate a filter string with escaped single quotes", () => {
+        const filterString = "name = 'John \\'Doe'";
+        expect(new Filter("parsed", columns, "").validateFilterString(filterString)).toBe(true);
+    });
+    it("should validate a filter string with escaped double quotes", () => {
+        const filterString = 'name = "John \\"Doe\\""';
+        expect(new Filter("parsed", columns, "").validateFilterString(filterString)).toBe(true);
+    });
 });

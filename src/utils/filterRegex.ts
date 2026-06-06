@@ -1,7 +1,7 @@
 export const filterRegex = {
     variable: /\w+/,
     variableParse: /(\w+)/,
-    itemString: /["][^"]*?["]|['][^']*?[']|null/i,
+    itemString: /"(?:\\"|[^"])*"|'(?:\\'|[^'])*'|null/i,
     itemNumber: /[^'",][^,\s]*|null/i,
     itemBoolean: /True|False|null/i,
     item: / /,

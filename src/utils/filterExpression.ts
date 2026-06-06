@@ -105,7 +105,10 @@ const parseLiteralValue = (rawValue: string, columnType: ItemTypeParsed, isMulti
         if (match === null) {
             throw new Error(`Invalid string value ${rawValue}`);
         }
-        return match[2];
+        const quote = match[1];
+        const value = match[2];
+        const escapedQuote = quote === '"' ? '\\\\"' : "\\\\'";
+        return value.replace(new RegExp(escapedQuote, "g"), quote);
     }
 
     const items = rawValue.trim().replace(/^\((.*)\)$/s, "$1");
@@ -118,7 +121,10 @@ const parseLiteralValue = (rawValue: string, columnType: ItemTypeParsed, isMulti
         if (match === null) {
             throw new Error(`Invalid string value ${item}`);
         }
-        return match[2];
+        const quote = match[1];
+        const value = match[2];
+        const escapedQuote = quote === '"' ? '\\\\"' : "\\\\'";
+        return value.replace(new RegExp(escapedQuote, "g"), quote);
     });
 };
 
@@ -199,17 +205,18 @@ const readConditionText = (state: ParserState): string => {
     let nestedDepth = 0;
     let inSingle = false;
     let inDouble = false;
+    let previousCharWasEscape = false;
 
     while (state.position < state.input.length) {
         const character = state.input[state.position];
 
-        if (character === '"' && !inSingle) {
+        if (character === '"' && !inSingle && !previousCharWasEscape) {
             inDouble = !inDouble;
             state.position += 1;
             continue;
         }
 
-        if (character === "'" && !inDouble) {
+        if (character === "'" && !inDouble && !previousCharWasEscape) {
             inSingle = !inSingle;
             state.position += 1;
             continue;
@@ -247,6 +254,11 @@ const readConditionText = (state: ParserState): string => {
             }
         }
 
+        if (character === "\\" && !previousCharWasEscape) {
+            previousCharWasEscape = true;
+        } else {
+            previousCharWasEscape = false;
+        }
         state.position += 1;
     }
 
@@ -439,12 +451,15 @@ export const conditionToString = (condition: FilterCondition): string => {
             if (value.length === 0) {
                 valueString = "()";
             } else if (typeof value[0] === "string") {
-                valueString = `("${value.join('", "')}")`;
+                const escapedValues = value.map((v) => (v as string).replace(/"/g, '\\"'));
+                valueString = `("${escapedValues.join('", "')}")`;
             } else {
                 valueString = `(${value.join(", ")})`;
             }
         } else if (typeof value === "string") {
-            valueString = `"${value}"`;
+            // Escape double quotes in the string value
+            const escapedValue = value.replace(/"/g, '\\"');
+            valueString = `"${escapedValue}"`;
         } else {
             valueString = String(value);
         }
