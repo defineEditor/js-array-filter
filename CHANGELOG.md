@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.2]
+### Bug
+- Options are not saved when updating a filter using string.
+
 ## [0.2.1]
 ### Bug
 - Addressing issues with single and double quote characters inside filtered values.

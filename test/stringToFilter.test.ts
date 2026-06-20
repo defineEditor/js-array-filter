@@ -419,4 +419,28 @@ describe("stringToFilter", () => {
 
         expect(basicFilter).toEqual(expectedFilter);
     });
+    it("should save options in basic filter when updating filter", () => {
+        const sourceFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: "John" },
+                { variable: "age", operator: "gt", value: 30 },
+            ],
+            connectors: ["and"],
+            options: { caseInsensitive: true },
+        };
+        const filter = new Filter("parsed", columns, sourceFilter);
+        filter.update('name = "John" and age > 40');
+        const basicFilter = filter.toBasicFilter();
+
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: "John" },
+                { variable: "age", operator: "gt", value: 40 },
+            ],
+            connectors: ["and"],
+            options: { caseInsensitive: true },
+        };
+
+        expect(basicFilter).toEqual(expectedFilter);
+    });
 });
