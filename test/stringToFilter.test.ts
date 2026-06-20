@@ -326,4 +326,121 @@ describe("stringToFilter", () => {
 
         expect(new Filter("parsed", columns, filterString).toBasicFilter()).toEqual(expectedFilter);
     });
+    it("should create filter with a value having multiple double quotes", () => {
+        const filterString = 'name = "John \\"Doe\\"" and age > 30';
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: 'John "Doe"' },
+                { variable: "age", operator: "gt", value: 30 },
+            ],
+            connectors: ["and"],
+        };
+
+        const filter = new Filter("parsed", columns, filterString).toBasicFilter();
+
+        expect(filter).toEqual(expectedFilter);
+    });
+    it("should create filter with a value having single double quote", () => {
+        const filterString = 'name = "John \\"Doe" and age > 30';
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: 'John "Doe' },
+                { variable: "age", operator: "gt", value: 30 },
+            ],
+            connectors: ["and"],
+        };
+
+        const filter = new Filter("parsed", columns, filterString).toBasicFilter();
+
+        expect(filter).toEqual(expectedFilter);
+    });
+    it("should create filter with a value having multiple single quotes", () => {
+        const filterString = "name = 'John \\'Doe\\'' and age > 30";
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: "John 'Doe'" },
+                { variable: "age", operator: "gt", value: 30 },
+            ],
+            connectors: ["and"],
+        };
+
+        const filter = new Filter("parsed", columns, filterString).toBasicFilter();
+
+        expect(filter).toEqual(expectedFilter);
+    });
+    it("should create filter with a value having one single quote", () => {
+        const filterString = "name = 'John \\'Doe' and age > 30";
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: "John 'Doe" },
+                { variable: "age", operator: "gt", value: 30 },
+            ],
+            connectors: ["and"],
+        };
+
+        const filter = new Filter("parsed", columns, filterString).toBasicFilter();
+
+        expect(filter).toEqual(expectedFilter);
+    });
+    it("should pass conversion round trip for a value with escaped double quotes", () => {
+        const filterString = 'name = "John \\"Doe\\"" and age > 30';
+        const basicFilter = new Filter("parsed", columns, filterString).toBasicFilter();
+        const newFilter = new Filter("parsed", columns, basicFilter).toString();
+
+        expect(newFilter).toEqual(filterString);
+    });
+    it("should pass conversion round trip for a value with escaped single quotes", () => {
+        const filterString = "name = 'John \\'Doe' and age > 30";
+        const basicFilter = new Filter("parsed", columns, filterString).toBasicFilter();
+        const newFilter = new Filter("parsed", columns, basicFilter).toString();
+        const expectedFilterString = 'name = "John \'Doe" and age > 30';
+
+        expect(newFilter).toEqual(expectedFilterString);
+    });
+    it("should save options in basic filter", () => {
+        const sourceFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: "John" },
+                { variable: "age", operator: "gt", value: 30 },
+            ],
+            connectors: ["and"],
+            options: { caseInsensitive: true },
+        };
+        const basicFilter = new Filter("parsed", columns, sourceFilter).toBasicFilter();
+
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: "John" },
+                { variable: "age", operator: "gt", value: 30 },
+            ],
+            connectors: ["and"],
+            options: { caseInsensitive: true },
+        };
+
+        expect(basicFilter).toEqual(expectedFilter);
+    });
+    it("should save options in basic filter when updating filter", () => {
+        const sourceFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: "John" },
+                { variable: "age", operator: "gt", value: 30 },
+            ],
+            connectors: ["and"],
+            options: { caseInsensitive: true },
+        };
+        const filter = new Filter("parsed", columns, sourceFilter);
+        filter.update('name = "John" and age > 40');
+        const basicFilter = filter.toBasicFilter();
+
+        const expectedFilter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: "John" },
+                { variable: "age", operator: "gt", value: 40 },
+            ],
+            connectors: ["and"],
+            options: { caseInsensitive: true },
+        };
+
+        expect(basicFilter).toEqual(expectedFilter);
+    });
 });

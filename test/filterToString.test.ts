@@ -413,4 +413,19 @@ describe("filterToString", () => {
             '(age > 50 or age in (20, 30, 40) or trt01p != trt01a) and (name in ("John", "Dave") or trt01p = "Placebo")',
         );
     });
+    it("should escape double quotes correctly", () => {
+        const filter: BasicFilter = {
+            conditions: [
+                { variable: "name", operator: "eq", value: 'John "Doe"' },
+                { variable: "age", operator: "gt", value: 30 },
+            ],
+            connectors: ["and"],
+        };
+        const columns = filter.conditions.map((condition) => ({
+            name: condition.variable,
+            dataType: typeof condition.value === "string" ? "string" : ("integer" as ItemTypeDatasetJson),
+        })) as ColumnMetadataDatasetJson[];
+        const expectedString = 'name = "John \\"Doe\\"" and age > 30';
+        expect(new Filter("dataset-json1.1", columns, filter).toString()).toBe(expectedString);
+    });
 });

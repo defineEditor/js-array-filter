@@ -72,6 +72,10 @@ class Filter {
         }
         if (typeof filter === "string") {
             const basicFilter = stringToFilter(filter, this.parsedColumns, this.caseInsensitiveColNames);
+            // Keep the same options as in the previous filter
+            if (this.parsedFilter.options !== undefined) {
+                basicFilter.options = this.parsedFilter.options;
+            }
             this.parsedFilter = this.parse(basicFilter, parsedColumns);
         } else {
             this.parsedFilter = this.parse(filter, parsedColumns);
